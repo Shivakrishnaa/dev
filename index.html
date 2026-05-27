@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Erumalla Shiva Krishna — Python Engineer · 3D Portfolio</title>
+<meta name="description" content="Interactive 3D portfolio of Erumalla Shiva Krishna — Python developer and operations analyst.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<style>
+  :root {
+    --void: #050507;
+    --void-2: #0a0a0d;
+    --surface: #111114;
+    --line: #1f1f24;
+    --text: #ededf0;
+    --text-dim: #7a7a82;
+    --text-faint: #3d3d44;
+    --phosphor: #9dffce;
+    --phosphor-dim: #4a8a6e;
+    --signal: #ff5b3a;
+    --amber: #ffb627;
+    --glow: rgba(157, 255, 206, 0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
+  html { scroll-behavior: auto; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    cursor: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The 3D canvas — fixed, fills viewport */
+  #three-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    touch-action: none;
+  }
+
+  /* Grain overlay over 3D */
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+  }
+
+  /* Cursor */
+  .cursor, .cursor-dot {
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.25s, height 0.25s, border-color 0.25s, background 0.25s;
+  }
+  .cursor {
+    width: 32px; height: 32px;
+    border: 1px solid var(--phosphor);
+    border-radius: 50%;
+    mix-blend-mode: difference;
+  }
+  .cursor.grab { width: 48px; height: 48px; border-color: var(--amber); }
+  .cursor.grabbing { width: 56px; height: 56px; border-color: var(--signal); border-style: dashed; }
+  .cursor-dot {
+    width: 4px; height: 4px;
+    background: var(--phosphor);
+    border-radius: 50%;
+  }
+
+  /* ============================================================
+     HUD — fixed UI elements
+     ============================================================ */
+  .hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .hud > * { pointer-events: auto; }
+
+  /* Top bar */
+  .top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 22px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(5, 5, 7, 0.4);
+    border-bottom: 1px solid rgba(157, 255, 206, 0.08);
+  }
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'SOFT' 50;
+  }
+  .logo span { color: var(--phosphor); }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .status-pill .dot {
+    width: 8px; height: 8px;
+    background: var(--phosphor);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--phosphor);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* Bottom-left telemetry */
+  .telemetry {
+    position: absolute;
+    bottom: 24px; left: 24px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 16px;
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    border: 1px solid rgba(157, 255, 206, 0.08);
+    background: rgba(5, 5, 7, 0.3);
+  }
+  .telemetry .label { color: var(--text-faint); }
+  .telemetry .val { color: var(--phosphor-dim); font-variant-numeric: tabular-nums; }
+
+  /* Bottom-right control buttons */
+  .controls {
+    position: absolute;
+    bottom: 24px; right: 24px;
+    display: flex;
+    gap: 12px;
+  }
+  .ctrl-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    background: rgba(5, 5, 7, 0.6);
+    backdrop-filter: blur(10px);
+    color: var(--text-dim);
+    border: 1px solid rgba(157, 255, 206, 0.12);
+    cursor: none;
+    transition: all 0.25s;
+  }
+  .ctrl-btn:hover {
+    color: var(--phosphor);
+    border-color: var(--phosphor);
+    background: rgba(157, 255, 206, 0.05);
+  }
+  .ctrl-btn.active {
+    background: var(--phosphor);
+    color: var(--void);
+    border-color: var(--phosphor);
+  }
+
+  /* Scroll progress rail (right edge) */
+  .rail {
+    position: absolute;
+    top: 50%;
+    right: 24px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .rail.hidden { opacity: 0; pointer-events: none; }
+  .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    cursor: none;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: color 0.3s;
+  }
+  .rail-item::after {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--text-faint);
+    transition: all 0.3s;
+  }
+  .rail-item.active { color: var(--phosphor); }
+  .rail-item.active::after {
+    background: var(--phosphor);
+    width: 40px;
+    box-shadow: 0 0 8px var(--phosphor);
+  }
+  .rail-item:hover { color: var(--text-dim); }
+
+  /* Scroll prompt (initial) */
+  .scroll-prompt {
+    position: absolute;
+    bottom: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-align: center;
+    transition: opacity 0.4s;
+  }
+  .scroll-prompt .line {
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(to bottom, var(--phosphor), transparent);
+    margin: 8px auto 0;
+    animation: drop 2s ease-in-out infinite;
+  }
+  @keyframes drop {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+  .scroll-prompt.hide { opacity: 0; }
+
+  /* Interaction hint */
+  .hint {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--phosphor);
+    text-align: center;
+    opacity: 0;
+    animation: hintFade 5s 2.5s ease forwards;
+    padding: 10px 18px;
+    border: 1px solid rgba(157, 255, 206, 0.2);
+    background: rgba(5, 5, 7, 0.4);
+    backdrop-filter: blur(10px);
+  }
+  @keyframes hintFade {
+    0% { opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ============================================================
+     CONTENT OVERLAYS — sections that fade based on scroll progress
+     ============================================================ */
+  .scroll-track {
+    position: relative;
+    /* 6 stages × 100vh = 600vh total scroll */
+    height: 600vh;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .stage-container {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 80px 64px;
+  }
+
+  .stage {
+    position: absolute;
+    max-width: 640px;
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
+    pointer-events: none;
+  }
+  .stage.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .stage[data-pos="left"] { left: 64px; }
+  .stage[data-pos="right"] { right: 64px; left: auto; text-align: right; }
+  .stage[data-pos="center"] { left: 50%; transform: translateX(-50%) translateY(40px); text-align: center; }
+  .stage[data-pos="center"].active { transform: translateX(-50%) translateY(0); }
+
+  .stage .phase {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--phosphor);
+    margin-bottom: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stage .phase::before {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--phosphor);
+    display: inline-block;
+  }
+  .stage[data-pos="right"] .phase::before { display: none; }
+  .stage[data-pos="right"] .phase::after {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--phosphor);
+    display: inline-block;
+  }
+
+  .stage h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-variation-settings: 'SOFT' 40;
+    font-size: clamp(40px, 6vw, 88px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+  }
+  .stage h1 em {
+    font-style: italic;
+    color: var(--phosphor);
+    font-variation-settings: 'SOFT' 100;
+  }
+  .stage h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-variation-settings: 'SOFT' 40;
+    font-size: clamp(32px, 4.5vw, 64px);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  .stage h2 em { font-style: italic; color: var(--phosphor); font-variation-settings: 'SOFT' 100; }
+  .stage p {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.75;
+    margin-bottom: 16px;
+    max-width: 520px;
+  }
+  .stage p strong { color: var(--text); font-weight: 500; }
+  .stage[data-pos="right"] p { margin-left: auto; }
+
+  .meta-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+  }
+  .stage[data-pos="right"] .meta-row { justify-content: flex-end; }
+  .meta-row div {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .meta-row div strong {
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 20px;
+    text-transform: none;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-top: 6px;
+  }
+
+  .stack-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 24px;
+  }
+  .stage[data-pos="right"] .stack-pills { justify-content: flex-end; }
+  .stack-pills span {
+    font-size: 10px;
+    padding: 5px 11px;
+    border: 1px solid rgba(157, 255, 206, 0.2);
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    background: rgba(5, 5, 7, 0.4);
+    backdrop-filter: blur(10px);
+  }
+  .stack-pills span.primary {
+    background: var(--phosphor);
+    color: var(--void);
+    border-color: var(--phosphor);
+    font-weight: 600;
+  }
+
+  /* Stats stage */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    margin-top: 32px;
+    max-width: 520px;
+  }
+  .stage[data-pos="right"] .stats-grid { margin-left: auto; }
+  .stat-card {
+    border: 1px solid rgba(157, 255, 206, 0.15);
+    background: rgba(5, 5, 7, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 24px;
+  }
+  .stat-card .v {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 48px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    font-variation-settings: 'SOFT' 60;
+  }
+  .stat-card .v em {
+    color: var(--phosphor);
+    font-style: italic;
+  }
+  .stat-card .l {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  /* Contact stage */
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--void);
+    background: var(--phosphor);
+    padding: 18px 32px;
+    border: 1px solid var(--phosphor);
+    margin-top: 24px;
+    transition: all 0.3s;
+  }
+  .cta:hover {
+    background: transparent;
+    color: var(--phosphor);
+    box-shadow: 0 0 30px var(--glow);
+  }
+  .cta svg { transition: transform 0.3s; }
+  .cta:hover svg { transform: translateX(6px); }
+
+  .contact-links {
+    display: flex;
+    gap: 28px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  .stage[data-pos="center"] .contact-links { justify-content: center; }
+  .contact-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  .contact-links a:hover { color: var(--phosphor); }
+
+  /* Free-explore mode: hide stage content and rail */
+  body.free-mode .stage,
+  body.free-mode .rail,
+  body.free-mode .scroll-prompt {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+  body.free-mode .free-banner {
+    opacity: 1;
+  }
+  .free-banner {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--amber);
+    padding: 10px 18px;
+    border: 1px solid rgba(255, 182, 39, 0.4);
+    background: rgba(5, 5, 7, 0.6);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.3s;
+    text-align: center;
+  }
+  .free-banner span { color: var(--text-dim); margin-left: 12px; }
+
+  /* Loader */
+  .loader {
+    position: fixed;
+    inset: 0;
+    background: var(--void);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    transition: opacity 0.8s 0.3s, visibility 0.8s 0.3s;
+  }
+  .loader.done { opacity: 0; visibility: hidden; }
+  .loader .name {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 32px;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'SOFT' 60;
+  }
+  .loader .name span { color: var(--phosphor); }
+  .loader .bar {
+    width: 240px; height: 1px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .loader .bar::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: var(--phosphor);
+    animation: load 1.6s ease forwards;
+  }
+  @keyframes load {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  .loader .label {
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    body { cursor: auto; font-size: 13px; }
+    .cursor, .cursor-dot { display: none; }
+    /* let touches pass through canvas to scroll the page */
+    #three-canvas { pointer-events: none; touch-action: pan-y; }
+    .stage-container { padding: 100px 24px 120px; }
+    .stage { max-width: 100%; left: 24px !important; right: 24px !important; text-align: left !important; }
+    .stage[data-pos="right"] .phase::after { display: none; }
+    .stage[data-pos="right"] .phase::before {
+      content: '';
+      width: 24px; height: 1px;
+      background: var(--phosphor);
+      display: inline-block;
+    }
+    .stage[data-pos="right"] .meta-row,
+    .stage[data-pos="right"] .stack-pills,
+    .stage[data-pos="right"] .contact-links { justify-content: flex-start; }
+    .stage[data-pos="right"] .stats-grid { margin-left: 0; }
+    .stage[data-pos="right"] p { margin-left: 0; }
+    .rail { display: none; }
+    .telemetry { font-size: 9px; padding: 8px 12px; }
+    .telemetry > div:nth-child(n+5) { display: none; } /* hide cam coords on mobile */
+    .controls { gap: 6px; }
+    .ctrl-btn { padding: 10px 12px; font-size: 9px; }
+    #btnExplore { display: none; } /* free-explore needs pointer events on canvas */
+    .meta-row { gap: 24px; }
+    .stats-grid { grid-template-columns: 1fr; gap: 16px; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOADER
+     ============================================================ -->
+<div class="loader" id="loader">
+  <div class="name">s<span>.</span>k</div>
+  <div class="bar"></div>
+  <div class="label">Initialising 3D environment</div>
+</div>
+
+<!-- ============================================================
+     3D CANVAS + CURSOR + GRAIN
+     ============================================================ -->
+<canvas id="three-canvas"></canvas>
+<div class="grain"></div>
+<div class="cursor"></div>
+<div class="cursor-dot"></div>
+
+<!-- ============================================================
+     HUD
+     ============================================================ -->
+<div class="hud">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="logo">s<span>.</span>k</div>
+    <div class="status-pill"><span class="dot"></span>Online · Open to roles</div>
+  </div>
+
+  <!-- Interaction hint (auto-fades) -->
+  <div class="hint">Drag to rotate · Scroll to journey</div>
+
+  <!-- Free-explore banner -->
+  <div class="free-banner">⌖ Free Explore Mode<span>drag · scroll-zoom · right-drag-pan</span></div>
+
+  <!-- Right-edge stage rail -->
+  <nav class="rail" id="rail">
+    <button class="rail-item active" data-jump="0">Genesis</button>
+    <button class="rail-item" data-jump="1">Identity</button>
+    <button class="rail-item" data-jump="2">Stack</button>
+    <button class="rail-item" data-jump="3">Experience</button>
+    <button class="rail-item" data-jump="4">Numbers</button>
+    <button class="rail-item" data-jump="5">Contact</button>
+  </nav>
+
+  <!-- Initial scroll prompt -->
+  <div class="scroll-prompt" id="scrollPrompt">
+    Scroll to begin
+    <div class="line"></div>
+  </div>
+
+  <!-- Bottom telemetry -->
+  <div class="telemetry" id="telemetry">
+    <div class="label">Lat</div><div class="val" id="telLat">17.385°N</div>
+    <div class="label">Lon</div><div class="val">78.486°E</div>
+    <div class="label">Cam·X</div><div class="val" id="telCamX">+000.0</div>
+    <div class="label">Cam·Y</div><div class="val" id="telCamY">+000.0</div>
+    <div class="label">Cam·Z</div><div class="val" id="telCamZ">+000.0</div>
+    <div class="label">FPS</div><div class="val" id="telFps">--</div>
+  </div>
+
+  <!-- Bottom controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="btnExplore">⌖ Free Explore</button>
+    <button class="ctrl-btn" id="btnReset">⟲ Reset</button>
+  </div>
+
+</div>
+
+<!-- ============================================================
+     SCROLLABLE CONTENT — provides scroll length + content overlays
+     ============================================================ -->
+<div class="scroll-track"></div>
+
+<!-- Stages: fixed overlays that fade based on scroll progress -->
+<div class="stage-container">
+
+  <!-- STAGE 0 — GENESIS -->
+  <div class="stage active" data-stage="0" data-pos="center">
+    <div class="phase">Phase 00 — Genesis</div>
+    <h1>Erumalla<br><em>Shiva Krishna</em></h1>
+    <p style="text-align:center; margin: 0 auto;">Python engineer · Operations analyst · Pattern hunter.<br>Hyderabad, India.</p>
+    <div class="meta-row" style="justify-content:center;">
+      <div>Status<strong>Open</strong></div>
+      <div>Experience<strong>2+ years</strong></div>
+      <div>Focus<strong>Automation</strong></div>
+    </div>
+  </div>
+
+  <!-- STAGE 1 — IDENTITY -->
+  <div class="stage" data-stage="1" data-pos="left">
+    <div class="phase">Phase 01 — Identity</div>
+    <h2>I engineer<br><em>decisions</em><br>from noise.</h2>
+    <p>The hard part isn't writing code that runs. It's building systems that hold under <strong>adversarial</strong> conditions, fail in ways you can <strong>measure</strong>, and ship with evidence to prove they're safe.</p>
+    <p>Background in phishing &amp; abuse investigation. Now shipping production Python automation at Amazon ADCI — with a regression suite for every assumption.</p>
+  </div>
+
+  <!-- STAGE 2 — STACK -->
+  <div class="stage" data-stage="2" data-pos="right">
+    <div class="phase">Phase 02 — Toolkit</div>
+    <h2>The <em>stack</em>.</h2>
+    <p>Production languages, async pipelines, scraping infrastructure, and the analytical instruments that turn raw events into measurable decisions.</p>
+    <div class="stack-pills">
+      <span class="primary">Python</span>
+      <span class="primary">FastAPI</span>
+      <span class="primary">asyncio</span>
+      <span>Playwright</span>
+      <span>cloudscraper</span>
+      <span>httpx</span>
+      <span>BeautifulSoup</span>
+      <span>pandas</span>
+      <span>openpyxl</span>
+      <span>SQL</span>
+      <span>Docker</span>
+      <span>uvicorn</span>
+      <span>regex</span>
+      <span>JSON-LD</span>
+      <span>Bash</span>
+      <span>Java</span>
+      <span>C / C++</span>
+    </div>
+  </div>
+
+  <!-- STAGE 3 — EXPERIENCE -->
+  <div class="stage" data-stage="3" data-pos="left">
+    <div class="phase">Phase 03 — Trajectory</div>
+    <h2>Where I've <em>shipped</em>.</h2>
+    <p><strong>Amazon ADCI — Catalog Assistant</strong> · Apr 2025 → Present<br>
+    Production Python automation across 11 international marketplaces. Tuned async concurrency 8 → 24, achieving 3–5× throughput. Raised auto-decision rate from ~50% to ~98% on a 1,655-row regression suite while preserving a zero-false-approval guarantee.</p>
+    <p><strong>Wipro Limited — Phishing Threat Associate</strong> · Sep 2023 → Dec 2024<br>
+    Investigated phishing, cloaking, and brand-impersonation across banking, crypto, and e-commerce. Adversarial instincts that translate directly to LLM red-teaming and safety eval design.</p>
+  </div>
+
+  <!-- STAGE 4 — STATS -->
+  <div class="stage" data-stage="4" data-pos="right">
+    <div class="phase">Phase 04 — Receipts</div>
+    <h2>A <em>track record</em>.</h2>
+    <p>Numbers from production. Every claim backed by a regression suite, a labelled dataset, and a documented post-mortem.</p>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="v">11</div><div class="l">Marketplaces served</div></div>
+      <div class="stat-card"><div class="v">98<em>%</em></div><div class="l">Auto-decision rate</div></div>
+      <div class="stat-card"><div class="v">1,655</div><div class="l">Labelled regression rows</div></div>
+      <div class="stat-card"><div class="v">0</div><div class="l">False approvals shipped</div></div>
+    </div>
+  </div>
+
+  <!-- STAGE 5 — CONTACT -->
+  <div class="stage" data-stage="5" data-pos="center">
+    <div class="phase">Phase 05 — Signal</div>
+    <h1>Let's build the<br>next <em>system</em>.</h1>
+    <p style="text-align:center; margin: 0 auto;">Open to AI engineering, automation, and systems roles.<br>Remote-friendly · Based in Hyderabad.</p>
+    <div style="text-align:center;">
+      <a class="cta" href="mailto:shivakrishnaerumalla@gmail.com">
+        shivakrishnaerumalla@gmail.com
+        <svg width="18" height="11" viewBox="0 0 20 12" fill="none">
+          <path d="M14 1L19 6L14 11M19 6H1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+    <div class="contact-links">
+      <a href="tel:+919010620164">+91 90106 20164</a>
+      <a href="https://github.com/shivakrishnaa" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://shivakrishnaa.github.io/my/" target="_blank" rel="noopener">Portfolio ↗</a>
+      <a href="https://linkedin.com/in/shivakrishnaerumalla" target="_blank" rel="noopener">LinkedIn ↗</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   ERUMALLA SHIVA KRISHNA · 3D PORTFOLIO
+   Single Three.js scene, scroll-driven camera, drag-to-rotate,
+   momentum physics, free-explore orbit controls.
+   ===================================================================== */
+
+(function() {
+'use strict';
+
+const isMobile = window.matchMedia('(max-width: 768px)').matches;
+const COLORS = {
+  phosphor: 0x9dffce,
+  phosphorDim: 0x4a8a6e,
+  signal: 0xff5b3a,
+  amber: 0xffb627,
+  void: 0x050507,
+};
+
+/* ===================================================================
+   1. RENDERER + SCENE + CAMERA
+   =================================================================== */
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias: true, alpha: false,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(COLORS.void, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(COLORS.void, 0.0055);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 4000);
+camera.position.set(0, 0, 220);
+
+/* ===================================================================
+   2. LIGHTING
+   =================================================================== */
+scene.add(new THREE.AmbientLight(0x202028, 0.6));
+
+const keyLight = new THREE.PointLight(COLORS.phosphor, 2.2, 400, 1.6);
+keyLight.position.set(40, 60, 40);
+scene.add(keyLight);
+
+const rimLight = new THREE.PointLight(COLORS.signal, 1.4, 300, 1.8);
+rimLight.position.set(-60, -20, -40);
+scene.add(rimLight);
+
+const fillLight = new THREE.PointLight(COLORS.amber, 0.8, 250, 1.8);
+fillLight.position.set(0, -80, 60);
+scene.add(fillLight);
+
+/* ===================================================================
+   3. STAR FIELD (background)
+   =================================================================== */
+function makeStars() {
+  const count = isMobile ? 1500 : 3500;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = 800 + Math.random() * 1200;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i*3+2] = r * Math.cos(phi);
+    const tint = Math.random();
+    if (tint < 0.7) { colors[i*3]=0.6; colors[i*3+1]=1.0; colors[i*3+2]=0.8; }
+    else if (tint < 0.9) { colors[i*3]=0.9; colors[i*3+1]=0.8; colors[i*3+2]=0.4; }
+    else { colors[i*3]=1.0; colors[i*3+1]=0.4; colors[i*3+2]=0.3; }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 2.2, vertexColors: true, transparent: true, opacity: 0.85,
+    sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  return new THREE.Points(geo, mat);
+}
+const stars = makeStars();
+scene.add(stars);
+
+/* ===================================================================
+   4. THE CORE — multi-layered central object
+   =================================================================== */
+const core = new THREE.Group();
+
+/* Inner glowing icosa */
+const coreInner = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(5, 1),
+  new THREE.MeshStandardMaterial({
+    color: COLORS.signal, emissive: COLORS.signal, emissiveIntensity: 1.4,
+    metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.95,
+  })
+);
+core.add(coreInner);
+
+/* Middle wireframe */
+const coreMid = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(9, 1),
+  new THREE.MeshBasicMaterial({
+    color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.7,
+  })
+);
+core.add(coreMid);
+
+/* Outer crystal shell */
+const coreOuter = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(13, 0),
+  new THREE.MeshStandardMaterial({
+    color: COLORS.phosphor, emissive: COLORS.phosphor, emissiveIntensity: 0.3,
+    metalness: 0.9, roughness: 0.15, transparent: true, opacity: 0.18,
+    side: THREE.DoubleSide, flatShading: true,
+  })
+);
+core.add(coreOuter);
+
+/* Wireframe outer cage */
+const coreCage = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(18, 0),
+  new THREE.MeshBasicMaterial({
+    color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.25,
+  })
+);
+core.add(coreCage);
+
+scene.add(core);
+
+/* ===================================================================
+   5. ORBITAL RINGS (3 tilted)
+   =================================================================== */
+const rings = [];
+const ringConfigs = [
+  { r: 26, color: COLORS.phosphor, rot: [0, 0, 0],                       segments: 96 },
+  { r: 34, color: COLORS.phosphor, rot: [Math.PI/3, 0, Math.PI/4],       segments: 96 },
+  { r: 42, color: COLORS.amber,    rot: [Math.PI/6, Math.PI/3, 0],       segments: 128 },
+];
+ringConfigs.forEach(cfg => {
+  const pts = [];
+  for (let i = 0; i <= cfg.segments; i++) {
+    const a = (i / cfg.segments) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a) * cfg.r, 0, Math.sin(a) * cfg.r));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({
+    color: cfg.color, transparent: true, opacity: 0.5,
+  });
+  const ring = new THREE.Line(geo, mat);
+  ring.rotation.set(...cfg.rot);
+  ring.userData.cfg = cfg;
+  scene.add(ring);
+  rings.push(ring);
+});
+
+/* ===================================================================
+   6. ORBITAL NODES (stack items, etc) — physical orbiting spheres
+   =================================================================== */
+const orbitNodes = [];
+const nodeCount = 36;
+for (let i = 0; i < nodeCount; i++) {
+  const ringIdx = i % 3;
+  const cfg = ringConfigs[ringIdx];
+  const isHero = i % 7 === 0;
+  const mat = new THREE.MeshStandardMaterial({
+    color: isHero ? COLORS.signal : COLORS.phosphor,
+    emissive: isHero ? COLORS.signal : COLORS.phosphor,
+    emissiveIntensity: isHero ? 1.6 : 1.0,
+    metalness: 0.5, roughness: 0.3,
+  });
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(isHero ? 0.55 : 0.32, 16, 16),
+    mat
+  );
+  scene.add(mesh);
+  orbitNodes.push({
+    mesh, ringIdx, cfg,
+    angle: (i / nodeCount) * Math.PI * 2 + Math.random() * 0.3,
+    speed: 0.0035 + Math.random() * 0.004,
+  });
+}
+
+/* ===================================================================
+   7. EXPERIENCE PILLARS — two large blocks representing roles
+   =================================================================== */
+const pillars = new THREE.Group();
+pillars.position.set(0, 0, 0);
+
+function makePillar(x, color, height) {
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: color, emissive: color, emissiveIntensity: 0.4,
+    metalness: 0.6, roughness: 0.25, transparent: true, opacity: 0.85,
+  });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(6, height, 6), mat);
+  grp.add(body);
+  /* wireframe overlay */
+  const wire = new THREE.Mesh(
+    new THREE.BoxGeometry(6.1, height + 0.1, 6.1),
+    new THREE.MeshBasicMaterial({ color: color, wireframe: true, transparent: true, opacity: 0.5 })
+  );
+  grp.add(wire);
+  /* capping sphere */
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(2, 16, 16),
+    new THREE.MeshStandardMaterial({
+      color: color, emissive: color, emissiveIntensity: 1.5,
+      metalness: 0.4, roughness: 0.3,
+    })
+  );
+  cap.position.y = height/2 + 2;
+  grp.add(cap);
+  grp.position.x = x;
+  grp.position.y = -height/2 + 5;
+  return grp;
+}
+const pillar1 = makePillar(-12, COLORS.phosphor, 32);  /* Amazon (longer) */
+const pillar2 = makePillar(+12, COLORS.amber, 22);     /* Wipro */
+pillars.add(pillar1);
+pillars.add(pillar2);
+pillars.position.set(80, -10, -30);
+scene.add(pillars);
+
+/* ===================================================================
+   8. STATS MONOLITHS — 4 floating slabs with glow
+   =================================================================== */
+const statsGroup = new THREE.Group();
+const statsPositions = [
+  [-18, 8, 0], [18, 8, 0], [-18, -8, 0], [18, -8, 0],
+];
+const statsMonoliths = [];
+statsPositions.forEach((pos, i) => {
+  const mat = new THREE.MeshStandardMaterial({
+    color: i === 3 ? COLORS.signal : COLORS.phosphor,
+    emissive: i === 3 ? COLORS.signal : COLORS.phosphor,
+    emissiveIntensity: 0.8,
+    metalness: 0.8, roughness: 0.15,
+    transparent: true, opacity: 0.7,
+  });
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 0.6), mat);
+  slab.position.set(...pos);
+  const wire = new THREE.Mesh(
+    new THREE.BoxGeometry(12.1, 12.1, 0.7),
+    new THREE.MeshBasicMaterial({
+      color: i === 3 ? COLORS.signal : COLORS.phosphor,
+      wireframe: true, transparent: true, opacity: 0.4,
+    })
+  );
+  wire.position.copy(slab.position);
+  statsGroup.add(slab);
+  statsGroup.add(wire);
+  statsMonoliths.push({ slab, wire, basePos: pos.slice() });
+});
+statsGroup.position.set(-80, 5, -20);
+scene.add(statsGroup);
+
+/* ===================================================================
+   9. CONTACT PORTAL — torus ring with inner pulse
+   =================================================================== */
+const portal = new THREE.Group();
+const portalRing = new THREE.Mesh(
+  new THREE.TorusGeometry(14, 0.4, 24, 96),
+  new THREE.MeshStandardMaterial({
+    color: COLORS.phosphor, emissive: COLORS.phosphor, emissiveIntensity: 1.2,
+    metalness: 0.7, roughness: 0.2,
+  })
+);
+portal.add(portalRing);
+const portalCore = new THREE.Mesh(
+  new THREE.SphereGeometry(3, 24, 24),
+  new THREE.MeshStandardMaterial({
+    color: COLORS.signal, emissive: COLORS.signal, emissiveIntensity: 2.0,
+    transparent: true, opacity: 0.9,
+  })
+);
+portal.add(portalCore);
+const portalWire = new THREE.Mesh(
+  new THREE.TorusGeometry(18, 0.1, 16, 80),
+  new THREE.MeshBasicMaterial({ color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.3 })
+);
+portalWire.rotation.x = Math.PI/2;
+portal.add(portalWire);
+portal.position.set(0, 0, -160);
+scene.add(portal);
+
+/* ===================================================================
+   10. PARTICLE FIELD — ambient atmosphere
+   =================================================================== */
+function makeParticleField() {
+  const N = isMobile ? 400 : 900;
+  const positions = new Float32Array(N * 3);
+  const bases = [];
+  for (let i = 0; i < N; i++) {
+    const x = (Math.random() - 0.5) * 400;
+    const y = (Math.random() - 0.5) * 250;
+    const z = (Math.random() - 0.5) * 400;
+    positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
+    bases.push({ x, y, z });
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: COLORS.phosphor, size: 0.45, transparent: true, opacity: 0.55,
+    sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.userData.bases = bases;
+  return pts;
+}
+const particles = makeParticleField();
+scene.add(particles);
+
+/* ===================================================================
+   11. STREAMS — lines emanating from core
+   =================================================================== */
+const streamCount = 48;
+const streamPositions = new Float32Array(streamCount * 6);
+const streamData = [];
+for (let i = 0; i < streamCount; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r1 = 18, r2 = 30 + Math.random() * 25;
+  streamPositions[i*6]   = r1 * Math.sin(phi) * Math.cos(theta);
+  streamPositions[i*6+1] = r1 * Math.sin(phi) * Math.sin(theta);
+  streamPositions[i*6+2] = r1 * Math.cos(phi);
+  streamPositions[i*6+3] = r2 * Math.sin(phi) * Math.cos(theta);
+  streamPositions[i*6+4] = r2 * Math.sin(phi) * Math.sin(theta);
+  streamPositions[i*6+5] = r2 * Math.cos(phi);
+  streamData.push({ theta, phi, r1, r2 });
+}
+const streamGeo = new THREE.BufferGeometry();
+streamGeo.setAttribute('position', new THREE.BufferAttribute(streamPositions, 3));
+const streamMat = new THREE.LineBasicMaterial({
+  color: COLORS.phosphor, transparent: true, opacity: 0.3,
+  blending: THREE.AdditiveBlending,
+});
+const streams = new THREE.LineSegments(streamGeo, streamMat);
+scene.add(streams);
+
+/* ===================================================================
+   12. CAMERA WAYPOINTS — scroll-driven path
+   =================================================================== */
+const waypoints = [
+  /* 0 GENESIS  — far, looking at core, slight tilt */
+  { pos: [0, 6, 130],     look: [0, 0, 0] },
+  /* 1 IDENTITY — closer, slight off-center */
+  { pos: [-30, 10, 60],   look: [0, 0, 0] },
+  /* 2 STACK    — high angle to see ring system */
+  { pos: [0, 55, 55],     look: [0, 0, 0] },
+  /* 3 EXPERIENCE — pan to the pillars */
+  { pos: [60, 8, 30],     look: [80, -10, -30] },
+  /* 4 STATS    — pan to monoliths */
+  { pos: [-60, 12, 30],   look: [-80, 5, -20] },
+  /* 5 CONTACT  — flying toward portal */
+  { pos: [0, 0, -100],    look: [0, 0, -160] },
+];
+
+/* ===================================================================
+   13. SCROLL + DRAG + CAMERA STATE
+   =================================================================== */
+const state = {
+  scroll: 0,           /* 0..1 */
+  targetScroll: 0,
+  dragRotX: 0,         /* additional rotation offset (from drag) */
+  dragRotY: 0,
+  targetDragX: 0,
+  targetDragY: 0,
+  mouseX: 0,           /* parallax */
+  mouseY: 0,
+  targetMouseX: 0,
+  targetMouseY: 0,
+  velX: 0,             /* drag momentum */
+  velY: 0,
+  isDragging: false,
+  freeMode: false,
+  lastInteract: performance.now(),
+};
+
+const stages = document.querySelectorAll('.stage');
+const railItems = document.querySelectorAll('.rail-item');
+const scrollPrompt = document.getElementById('scrollPrompt');
+const SCROLL_LENGTH = () => document.body.scrollHeight - window.innerHeight;
+
+window.addEventListener('scroll', () => {
+  const len = SCROLL_LENGTH();
+  state.targetScroll = len > 0 ? window.scrollY / len : 0;
+  state.lastInteract = performance.now();
+  if (window.scrollY > 50) scrollPrompt.classList.add('hide');
+}, { passive: true });
+
+/* Drag rotation */
+let dragStart = { x: 0, y: 0 };
+let lastDrag = { x: 0, y: 0 };
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (state.freeMode) return;
+  state.isDragging = true;
+  dragStart.x = e.clientX; dragStart.y = e.clientY;
+  lastDrag.x = e.clientX; lastDrag.y = e.clientY;
+  state.velX = 0; state.velY = 0;
+  document.querySelector('.cursor').classList.add('grabbing');
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  /* parallax always */
+  state.targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  state.targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+  if (state.isDragging) {
+    const dx = e.clientX - lastDrag.x;
+    const dy = e.clientY - lastDrag.y;
+    state.targetDragX += dx * 0.005;
+    state.targetDragY += dy * 0.005;
+    /* clamp vertical */
+    state.targetDragY = Math.max(-1.2, Math.min(1.2, state.targetDragY));
+    state.velX = dx * 0.005;
+    state.velY = dy * 0.005;
+    lastDrag.x = e.clientX; lastDrag.y = e.clientY;
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  state.isDragging = false;
+  document.querySelector('.cursor').classList.remove('grabbing');
+});
+
+/* Reset drag rotation when starting to scroll again */
+let scrollDebounce;
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollDebounce);
+  scrollDebounce = setTimeout(() => {
+    if (!state.isDragging) {
+      /* gently relax drag back to 0 */
+      state.targetDragX *= 0.7;
+      state.targetDragY *= 0.7;
+    }
+  }, 1500);
+}, { passive: true });
+
+/* Touch hint cursor */
+canvas.addEventListener('pointerenter', () => {
+  if (!state.isDragging) document.querySelector('.cursor').classList.add('grab');
+});
+canvas.addEventListener('pointerleave', () => {
+  document.querySelector('.cursor').classList.remove('grab');
+});
+
+/* ===================================================================
+   14. CUBIC INTERPOLATION ALONG WAYPOINTS
+   =================================================================== */
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+function getWaypoint(progress) {
+  const n = waypoints.length - 1;
+  const scaled = Math.max(0, Math.min(0.9999, progress)) * n;
+  const idx = Math.floor(scaled);
+  const t = smoothstep(scaled - idx);
+  const a = waypoints[idx];
+  const b = waypoints[idx + 1] || a;
+  return {
+    pos: [
+      a.pos[0] + (b.pos[0] - a.pos[0]) * t,
+      a.pos[1] + (b.pos[1] - a.pos[1]) * t,
+      a.pos[2] + (b.pos[2] - a.pos[2]) * t,
+    ],
+    look: [
+      a.look[0] + (b.look[0] - a.look[0]) * t,
+      a.look[1] + (b.look[1] - a.look[1]) * t,
+      a.look[2] + (b.look[2] - a.look[2]) * t,
+    ],
+    stageIdx: idx,
+    fraction: scaled - idx,
+  };
+}
+
+/* ===================================================================
+   15. ORBIT CONTROLS (free mode)
+   =================================================================== */
+let orbit = null;
+const btnExplore = document.getElementById('btnExplore');
+const btnReset = document.getElementById('btnReset');
+const hint = document.querySelector('.hint');
+
+btnExplore.addEventListener('click', () => {
+  state.freeMode = !state.freeMode;
+  if (state.freeMode) {
+    document.body.classList.add('free-mode');
+    btnExplore.classList.add('active');
+    btnExplore.textContent = '✕ Exit Explore';
+    if (!orbit) {
+      orbit = new THREE.OrbitControls(camera, canvas);
+      orbit.enableDamping = true;
+      orbit.dampingFactor = 0.08;
+      orbit.minDistance = 18;
+      orbit.maxDistance = 350;
+      orbit.zoomSpeed = 0.8;
+      orbit.rotateSpeed = 0.7;
+      orbit.target.set(0, 0, 0);
+    }
+    orbit.enabled = true;
+  } else {
+    document.body.classList.remove('free-mode');
+    btnExplore.classList.remove('active');
+    btnExplore.textContent = '⌖ Free Explore';
+    if (orbit) orbit.enabled = false;
+  }
+});
+
+btnReset.addEventListener('click', () => {
+  if (state.freeMode) {
+    orbit.target.set(0, 0, 0);
+    camera.position.set(0, 6, 130);
+    orbit.update();
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    state.targetDragX = 0;
+    state.targetDragY = 0;
+  }
+});
+
+/* Rail click navigation */
+railItems.forEach((el, i) => {
+  el.addEventListener('click', () => {
+    const n = waypoints.length - 1;
+    const target = (i / n) * SCROLL_LENGTH();
+    window.scrollTo({ top: target, behavior: 'smooth' });
+  });
+});
+
+/* ===================================================================
+   16. STAGE FADE LOGIC
+   =================================================================== */
+function updateStages(progress) {
+  const n = waypoints.length - 1;
+  const scaled = progress * n;
+  const idx = Math.max(0, Math.min(n, Math.round(scaled)));
+  stages.forEach((s, i) => s.classList.toggle('active', i === idx));
+  railItems.forEach((r, i) => r.classList.toggle('active', i === idx));
+}
+
+/* ===================================================================
+   17. ANIMATION LOOP
+   =================================================================== */
+const clock = new THREE.Clock();
+let fpsAccum = 0, fpsCount = 0, fpsLast = performance.now();
+
+const tmpVec = new THREE.Vector3();
+const tmpLook = new THREE.Vector3();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+
+  /* === SCROLL SMOOTHING === */
+  state.scroll += (state.targetScroll - state.scroll) * 0.08;
+
+  /* === DRAG MOMENTUM === */
+  if (!state.isDragging) {
+    state.targetDragX += state.velX;
+    state.targetDragY += state.velY;
+    state.velX *= 0.93;
+    state.velY *= 0.93;
+    state.targetDragY = Math.max(-1.2, Math.min(1.2, state.targetDragY));
+    if (Math.abs(state.velX) < 0.0001) state.velX = 0;
+    if (Math.abs(state.velY) < 0.0001) state.velY = 0;
+  }
+  state.dragRotX += (state.targetDragX - state.dragRotX) * 0.1;
+  state.dragRotY += (state.targetDragY - state.dragRotY) * 0.1;
+  state.mouseX += (state.targetMouseX - state.mouseX) * 0.05;
+  state.mouseY += (state.targetMouseY - state.mouseY) * 0.05;
+
+  /* === CAMERA UPDATE === */
+  if (!state.freeMode) {
+    const wp = getWaypoint(state.scroll);
+
+    /* base position + look-at */
+    tmpVec.set(wp.pos[0], wp.pos[1], wp.pos[2]);
+    tmpLook.set(wp.look[0], wp.look[1], wp.look[2]);
+
+    /* apply drag rotation as orbit around look-at target */
+    const offset = tmpVec.clone().sub(tmpLook);
+    const dist = offset.length();
+
+    /* spherical coordinates */
+    let yaw = Math.atan2(offset.x, offset.z);
+    let pitch = Math.asin(offset.y / dist);
+    yaw += state.dragRotX + state.mouseX * 0.05;
+    pitch += state.dragRotY + state.mouseY * 0.03;
+    pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
+
+    /* back to cartesian */
+    offset.x = dist * Math.cos(pitch) * Math.sin(yaw);
+    offset.y = dist * Math.sin(pitch);
+    offset.z = dist * Math.cos(pitch) * Math.cos(yaw);
+
+    camera.position.copy(tmpLook).add(offset);
+    camera.lookAt(tmpLook);
+    updateStages(state.scroll);
+  } else if (orbit) {
+    orbit.update();
+  }
+
+  /* === CORE ANIMATION === */
+  coreInner.rotation.x = t * 0.4;
+  coreInner.rotation.y = t * 0.55;
+  coreInner.material.emissiveIntensity = 1.0 + Math.sin(t * 2) * 0.6;
+  coreMid.rotation.x = -t * 0.25;
+  coreMid.rotation.z = t * 0.3;
+  coreOuter.rotation.x = t * 0.15;
+  coreOuter.rotation.y = -t * 0.2;
+  coreCage.rotation.x = -t * 0.1;
+  coreCage.rotation.y = t * 0.12;
+
+  /* breathing scale */
+  const breath = 1 + Math.sin(t * 1.2) * 0.04;
+  core.scale.setScalar(breath);
+
+  /* === RINGS === */
+  rings.forEach((ring, i) => {
+    ring.rotation.y += dt * (0.2 + i * 0.1);
+  });
+
+  /* === ORBITAL NODES === */
+  orbitNodes.forEach((n) => {
+    n.angle += n.speed * (1 + Math.sin(t * 0.5 + n.ringIdx) * 0.2);
+    const cfg = n.cfg;
+    const local = new THREE.Vector3(
+      Math.cos(n.angle) * cfg.r,
+      0,
+      Math.sin(n.angle) * cfg.r
+    );
+    local.applyEuler(new THREE.Euler(cfg.rot[0], cfg.rot[1], cfg.rot[2]));
+    n.mesh.position.copy(local);
+    n.mesh.material.emissiveIntensity = 0.8 + Math.sin(t * 3 + n.angle) * 0.5;
+  });
+
+  /* === PILLARS (gentle float) === */
+  pillar1.rotation.y = t * 0.15;
+  pillar2.rotation.y = -t * 0.18;
+  pillars.position.y = -10 + Math.sin(t * 0.4) * 1.5;
+
+  /* === STATS (float and pulse) === */
+  statsMonoliths.forEach((m, i) => {
+    m.slab.rotation.y = Math.sin(t * 0.3 + i) * 0.15;
+    m.wire.rotation.y = m.slab.rotation.y;
+    m.slab.position.y = m.basePos[1] + Math.sin(t * 0.6 + i * 1.5) * 0.8;
+    m.wire.position.y = m.slab.position.y;
+    m.slab.material.emissiveIntensity = 0.7 + Math.sin(t * 2 + i) * 0.3;
+  });
+  statsGroup.rotation.y = Math.sin(t * 0.1) * 0.1;
+
+  /* === PORTAL === */
+  portal.rotation.z = t * 0.1;
+  portalRing.rotation.x = Math.PI/2;
+  portalRing.rotation.z = t * 0.5;
+  portalWire.rotation.z = -t * 0.3;
+  portalCore.scale.setScalar(1 + Math.sin(t * 3) * 0.15);
+  portalCore.material.emissiveIntensity = 1.8 + Math.sin(t * 4) * 0.5;
+
+  /* === STARS slow rotation === */
+  stars.rotation.y = t * 0.005;
+  stars.rotation.x = t * 0.003;
+
+  /* === PARTICLE FIELD === */
+  const pp = particles.geometry.attributes.position.array;
+  const bases = particles.userData.bases;
+  for (let i = 0; i < bases.length; i++) {
+    const b = bases[i];
+    pp[i*3]   = b.x + Math.sin(t * 0.3 + i * 0.05) * 1.5;
+    pp[i*3+1] = b.y + Math.cos(t * 0.4 + i * 0.07) * 1.5;
+    pp[i*3+2] = b.z + Math.sin(t * 0.2 + i * 0.04) * 1.5;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  /* === STREAMS pulse === */
+  streamMat.opacity = 0.2 + Math.abs(Math.sin(t * 2)) * 0.25;
+  streams.rotation.y = t * 0.08;
+  streams.rotation.x = t * 0.05;
+
+  /* === LIGHTS pulse slightly === */
+  keyLight.intensity = 2.2 + Math.sin(t * 0.8) * 0.4;
+  rimLight.intensity = 1.4 + Math.cos(t * 0.6) * 0.3;
+
+  /* === RENDER === */
+  renderer.render(scene, camera);
+
+  /* === TELEMETRY === */
+  fpsCount++;
+  const now = performance.now();
+  if (now - fpsLast > 500) {
+    const fps = Math.round((fpsCount * 1000) / (now - fpsLast));
+    document.getElementById('telFps').textContent = fps;
+    document.getElementById('telCamX').textContent = (camera.position.x >= 0 ? '+' : '') + camera.position.x.toFixed(1);
+    document.getElementById('telCamY').textContent = (camera.position.y >= 0 ? '+' : '') + camera.position.y.toFixed(1);
+    document.getElementById('telCamZ').textContent = (camera.position.z >= 0 ? '+' : '') + camera.position.z.toFixed(1);
+    fpsCount = 0;
+    fpsLast = now;
+  }
+}
+
+/* ===================================================================
+   18. RESIZE HANDLER
+   =================================================================== */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ===================================================================
+   19. CUSTOM CURSOR
+   =================================================================== */
+if (!isMobile) {
+  const cursor = document.querySelector('.cursor');
+  const dot = document.querySelector('.cursor-dot');
+  let mx = 0, my = 0, cx = 0, cy = 0;
+  window.addEventListener('pointermove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+  });
+  (function loop() {
+    cx += (mx - cx) * 0.18;
+    cy += (my - cy) * 0.18;
+    cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%,-50%)`;
+    requestAnimationFrame(loop);
+  })();
+  document.querySelectorAll('a, button, .ctrl-btn, .rail-item').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('grab'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('grab'));
+  });
+}
+
+/* ===================================================================
+   20. KICKOFF
+   =================================================================== */
+animate();
+
+/* Hide loader once first frame rendered */
+setTimeout(() => {
+  document.getElementById('loader').classList.add('done');
+}, 1800);
+
+})();
+</script>
+</body>
+</html>
