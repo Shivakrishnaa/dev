@@ -384,8 +384,14 @@
     transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
     pointer-events: none; /* empty areas stay draggable */
   }
-  .stage::-webkit-scrollbar { width: 5px; }
-  .stage::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 5px; }
+  .stage {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stage::-webkit-scrollbar {
+  display: none;
+}
   .stage.active {
     opacity: 1;
     transform: translateY(0);
