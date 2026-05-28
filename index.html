@@ -2,48 +2,55 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Erumalla Shiva Krishna — Python Engineer · 3D Portfolio</title>
-<meta name="description" content="Interactive 3D portfolio of Erumalla Shiva Krishna — Python developer and operations analyst.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Erumalla Shiva Krishna — AI Engineer · Prompt Architect · Solution Designer</title>
+<meta name="description" content="AI engineer and prompt architect. Building intelligent systems through language.">
+<meta name="theme-color" content="#06051a">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Inter:wght@200..800&family=JetBrains+Mono:wght@200..700&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <style>
   :root {
-    --void: #050507;
-    --void-2: #0a0a0d;
-    --surface: #111114;
-    --line: #1f1f24;
-    --text: #ededf0;
-    --text-dim: #7a7a82;
-    --text-faint: #3d3d44;
-    --phosphor: #9dffce;
-    --phosphor-dim: #4a8a6e;
-    --signal: #ff5b3a;
-    --amber: #ffb627;
-    --glow: rgba(157, 255, 206, 0.15);
+    --ink: #06051a;
+    --ink-2: #0d0a26;
+    --panel: rgba(13, 10, 38, 0.55);
+    --line: rgba(255, 255, 255, 0.10);
+    --text: #ffffff;
+    --text-dim: rgba(255, 255, 255, 0.72);
+    --text-faint: rgba(255, 255, 255, 0.42);
+    --cyan: #00e5ff;
+    --magenta: #ff3ec5;
+    --lime: #c2ff3e;
+    --coral: #ff6e3d;
+    --gold: #ffd23e;
+    --lavender: #b85eff;
+    --gradient: linear-gradient(135deg, #00e5ff 0%, #b85eff 35%, #ff3ec5 65%, #ffd23e 100%);
+    --gradient-2: linear-gradient(90deg, #c2ff3e, #00e5ff, #b85eff, #ff3ec5);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { overflow-x: hidden; }
-  html { scroll-behavior: auto; }
+  html { scroll-behavior: auto; -webkit-tap-highlight-color: transparent; }
 
   body {
-    background: var(--void);
+    background: var(--ink);
     color: var(--text);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 14px;
-    line-height: 1.6;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
     cursor: none;
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
   }
 
-  /* The 3D canvas — fixed, fills viewport */
+  /* ============================================================
+     LAYERS
+     ============================================================ */
   #three-canvas {
     position: fixed;
     inset: 0;
@@ -53,46 +60,55 @@
     touch-action: none;
   }
 
-  /* Grain overlay over 3D */
-  .grain {
+  /* Gradient overlay over 3D (subtle warm glow) */
+  .vignette {
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 2;
-    opacity: 0.04;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(184, 94, 255, 0.18), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(255, 62, 197, 0.14), transparent 50%),
+      radial-gradient(circle at 50% 50%, transparent 40%, rgba(6, 5, 26, 0.6) 100%);
+  }
+
+  /* Grain overlay */
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.05;
     mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
   }
 
-  /* Cursor */
-  .cursor, .cursor-dot {
-    position: fixed; top: 0; left: 0;
-    pointer-events: none; z-index: 9999;
-    transform: translate(-50%, -50%);
-    transition: width 0.25s, height 0.25s, border-color 0.25s, background 0.25s;
+  /* ============================================================
+     STAR CURSOR (multiple stars trailing the pointer)
+     ============================================================ */
+  .star-cursor {
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    will-change: transform;
+    transform-origin: center;
   }
-  .cursor {
-    width: 32px; height: 32px;
-    border: 1px solid var(--phosphor);
-    border-radius: 50%;
-    mix-blend-mode: difference;
-  }
-  .cursor.grab { width: 48px; height: 48px; border-color: var(--amber); }
-  .cursor.grabbing { width: 56px; height: 56px; border-color: var(--signal); border-style: dashed; }
-  .cursor-dot {
-    width: 4px; height: 4px;
-    background: var(--phosphor);
-    border-radius: 50%;
+  .star-cursor svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 6px currentColor);
   }
 
   /* ============================================================
-     HUD — fixed UI elements
+     HUD
      ============================================================ */
   .hud {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 10;
+    z-index: 50;
   }
   .hud > * { pointer-events: auto; }
 
@@ -100,110 +116,126 @@
   .top-bar {
     position: absolute;
     top: 0; left: 0; right: 0;
-    padding: 22px 32px;
+    padding: 20px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    background: rgba(5, 5, 7, 0.4);
-    border-bottom: 1px solid rgba(157, 255, 206, 0.08);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    background: linear-gradient(180deg, rgba(6, 5, 26, 0.6) 0%, rgba(6, 5, 26, 0.2) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
   .logo {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-size: 22px;
+    font-size: 24px;
     letter-spacing: -0.02em;
-    font-variation-settings: 'SOFT' 50;
+    font-variation-settings: 'SOFT' 80;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .logo span { color: var(--phosphor); }
 
   .status-pill {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .status-pill .dot {
     width: 8px; height: 8px;
-    background: var(--phosphor);
+    background: var(--lime);
     border-radius: 50%;
-    box-shadow: 0 0 12px var(--phosphor);
+    box-shadow: 0 0 12px var(--lime), 0 0 24px var(--lime);
     animation: pulse 2s ease-in-out infinite;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
+    50% { opacity: 0.4; transform: scale(0.7); }
   }
 
   /* Bottom-left telemetry */
   .telemetry {
     position: absolute;
     bottom: 24px; left: 24px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--text-faint);
     display: grid;
     grid-template-columns: auto auto;
     gap: 4px 16px;
-    backdrop-filter: blur(10px);
-    padding: 12px 16px;
-    border: 1px solid rgba(157, 255, 206, 0.08);
-    background: rgba(5, 5, 7, 0.3);
+    backdrop-filter: blur(20px);
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(13, 10, 38, 0.4);
   }
-  .telemetry .label { color: var(--text-faint); }
-  .telemetry .val { color: var(--phosphor-dim); font-variant-numeric: tabular-nums; }
+  .telemetry .lbl { color: var(--text-faint); }
+  .telemetry .val { color: var(--cyan); font-variant-numeric: tabular-nums; }
+  .telemetry .val.warm { color: var(--magenta); }
 
-  /* Bottom-right control buttons */
+  /* Bottom-right controls */
   .controls {
     position: absolute;
     bottom: 24px; right: 24px;
     display: flex;
-    gap: 12px;
+    gap: 10px;
   }
   .ctrl-btn {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     padding: 12px 18px;
-    background: rgba(5, 5, 7, 0.6);
-    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    background: rgba(13, 10, 38, 0.55);
+    backdrop-filter: blur(20px);
     color: var(--text-dim);
-    border: 1px solid rgba(157, 255, 206, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     cursor: none;
-    transition: all 0.25s;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    font-weight: 500;
   }
   .ctrl-btn:hover {
-    color: var(--phosphor);
-    border-color: var(--phosphor);
-    background: rgba(157, 255, 206, 0.05);
+    color: var(--text);
+    border-color: var(--cyan);
+    background: rgba(0, 229, 255, 0.08);
+    box-shadow: 0 0 24px rgba(0, 229, 255, 0.3);
   }
   .ctrl-btn.active {
-    background: var(--phosphor);
-    color: var(--void);
-    border-color: var(--phosphor);
+    background: var(--gradient);
+    color: var(--ink);
+    border-color: transparent;
+    box-shadow: 0 0 30px rgba(184, 94, 255, 0.5);
   }
 
-  /* Scroll progress rail (right edge) */
+  /* Right-edge stage rail */
   .rail {
     position: absolute;
     top: 50%;
-    right: 24px;
+    right: 28px;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 18px;
+    transition: opacity 0.4s;
   }
-  .rail.hidden { opacity: 0; pointer-events: none; }
   .rail-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.3em;
     text-transform: uppercase;
@@ -211,41 +243,42 @@
     cursor: none;
     background: none;
     border: none;
-    font-family: inherit;
-    transition: color 0.3s;
+    font-weight: 500;
+    transition: all 0.3s;
   }
   .rail-item::after {
     content: '';
-    width: 24px; height: 1px;
+    width: 18px; height: 1px;
     background: var(--text-faint);
-    transition: all 0.3s;
+    transition: all 0.4s;
   }
-  .rail-item.active { color: var(--phosphor); }
+  .rail-item.active { color: var(--text); }
   .rail-item.active::after {
-    background: var(--phosphor);
-    width: 40px;
-    box-shadow: 0 0 8px var(--phosphor);
+    background: var(--cyan);
+    width: 36px;
+    box-shadow: 0 0 12px var(--cyan);
   }
   .rail-item:hover { color: var(--text-dim); }
 
-  /* Scroll prompt (initial) */
-  .scroll-prompt {
+  /* Scroll hint */
+  .scroll-hint {
     position: absolute;
-    bottom: 96px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.4em;
     text-transform: uppercase;
     color: var(--text-faint);
     text-align: center;
-    transition: opacity 0.4s;
+    transition: opacity 0.5s;
   }
-  .scroll-prompt .line {
+  .scroll-hint .arrow {
     width: 1px;
     height: 32px;
-    background: linear-gradient(to bottom, var(--phosphor), transparent);
-    margin: 8px auto 0;
+    margin: 12px auto 0;
+    background: linear-gradient(to bottom, var(--cyan), transparent);
     animation: drop 2s ease-in-out infinite;
   }
   @keyframes drop {
@@ -254,61 +287,88 @@
     51% { transform-origin: bottom; }
     100% { transform: scaleY(0); transform-origin: bottom; }
   }
-  .scroll-prompt.hide { opacity: 0; }
+  .scroll-hint.hide { opacity: 0; }
 
-  /* Interaction hint */
-  .hint {
+  /* Initial interaction hint */
+  .interaction-hint {
     position: absolute;
     top: 90px;
     left: 50%;
     transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: var(--phosphor);
-    text-align: center;
+    color: var(--cyan);
+    padding: 12px 20px;
+    border-radius: 100px;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    background: rgba(0, 229, 255, 0.06);
+    backdrop-filter: blur(20px);
     opacity: 0;
-    animation: hintFade 5s 2.5s ease forwards;
-    padding: 10px 18px;
-    border: 1px solid rgba(157, 255, 206, 0.2);
-    background: rgba(5, 5, 7, 0.4);
-    backdrop-filter: blur(10px);
+    animation: hintFade 6s 2.5s ease forwards;
   }
   @keyframes hintFade {
-    0% { opacity: 0; }
-    15% { opacity: 1; }
-    85% { opacity: 1; }
-    100% { opacity: 0; }
+    0% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   }
 
+  /* Free explore banner */
+  .free-banner {
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 12px 22px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 210, 62, 0.4);
+    background: rgba(255, 210, 62, 0.08);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .free-banner span { color: var(--text-dim); margin-left: 14px; }
+  body.free-mode .free-banner { opacity: 1; }
+  body.free-mode .rail,
+  body.free-mode .scroll-hint,
+  body.free-mode .stage { opacity: 0 !important; pointer-events: none !important; }
+
   /* ============================================================
-     CONTENT OVERLAYS — sections that fade based on scroll progress
+     CONTENT STAGES (overlays fading with scroll)
      ============================================================ */
   .scroll-track {
     position: relative;
-    /* 6 stages × 100vh = 600vh total scroll */
-    height: 600vh;
-    z-index: 3;
+    height: 700vh; /* 7 stages × 100vh */
+    z-index: 4;
     pointer-events: none;
   }
 
   .stage-container {
     position: fixed;
     inset: 0;
-    z-index: 3;
+    z-index: 5;
     pointer-events: none;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding: 80px 64px;
+    padding: 100px 64px 120px;
   }
 
   .stage {
     position: absolute;
     max-width: 640px;
     opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
+    transform: translateY(50px);
+    transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
     pointer-events: none;
   }
   .stage.active {
@@ -316,173 +376,323 @@
     transform: translateY(0);
     pointer-events: auto;
   }
+
   .stage[data-pos="left"] { left: 64px; }
   .stage[data-pos="right"] { right: 64px; left: auto; text-align: right; }
-  .stage[data-pos="center"] { left: 50%; transform: translateX(-50%) translateY(40px); text-align: center; }
-  .stage[data-pos="center"].active { transform: translateX(-50%) translateY(0); }
+  .stage[data-pos="center"] {
+    left: 50%;
+    transform: translateX(-50%) translateY(50px);
+    text-align: center;
+  }
+  .stage[data-pos="center"].active {
+    transform: translateX(-50%) translateY(0);
+  }
 
-  .stage .phase {
-    font-size: 10px;
-    letter-spacing: 0.35em;
-    text-transform: uppercase;
-    color: var(--phosphor);
-    margin-bottom: 20px;
+  .phase-tag {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 24px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: rgba(0, 229, 255, 0.08);
+    border: 1px solid rgba(0, 229, 255, 0.25);
   }
-  .stage .phase::before {
+  .phase-tag::before {
     content: '';
-    width: 24px; height: 1px;
-    background: var(--phosphor);
-    display: inline-block;
-  }
-  .stage[data-pos="right"] .phase::before { display: none; }
-  .stage[data-pos="right"] .phase::after {
-    content: '';
-    width: 24px; height: 1px;
-    background: var(--phosphor);
-    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
   }
 
   .stage h1 {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-variation-settings: 'SOFT' 40;
-    font-size: clamp(40px, 6vw, 88px);
+    font-variation-settings: 'SOFT' 50;
+    font-size: clamp(44px, 7vw, 96px);
     line-height: 0.95;
     letter-spacing: -0.03em;
     margin-bottom: 24px;
-  }
-  .stage h1 em {
-    font-style: italic;
-    color: var(--phosphor);
-    font-variation-settings: 'SOFT' 100;
+    color: var(--text);
   }
   .stage h2 {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-variation-settings: 'SOFT' 40;
-    font-size: clamp(32px, 4.5vw, 64px);
+    font-variation-settings: 'SOFT' 50;
+    font-size: clamp(34px, 5vw, 68px);
     line-height: 1.0;
     letter-spacing: -0.03em;
     margin-bottom: 20px;
+    color: var(--text);
   }
-  .stage h2 em { font-style: italic; color: var(--phosphor); font-variation-settings: 'SOFT' 100; }
+  .stage h1 em, .stage h2 em {
+    font-style: italic;
+    font-variation-settings: 'SOFT' 100;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
   .stage p {
     color: var(--text-dim);
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.75;
-    margin-bottom: 16px;
-    max-width: 520px;
+    margin-bottom: 18px;
+    max-width: 540px;
+    font-weight: 300;
   }
-  .stage p strong { color: var(--text); font-weight: 500; }
+  .stage p strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .stage p em {
+    font-style: normal;
+    color: var(--lime);
+    font-weight: 500;
+  }
   .stage[data-pos="right"] p { margin-left: auto; }
+  .stage[data-pos="center"] p { margin-left: auto; margin-right: auto; }
 
+  .lead {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-variation-settings: 'SOFT' 60;
+    font-size: clamp(20px, 2.6vw, 28px);
+    line-height: 1.4;
+    color: var(--text-dim);
+    letter-spacing: -0.01em;
+    margin-bottom: 28px;
+    font-style: italic;
+  }
+
+  /* Meta row */
   .meta-row {
     display: flex;
-    gap: 40px;
+    gap: 36px;
     flex-wrap: wrap;
     margin-top: 32px;
   }
   .stage[data-pos="right"] .meta-row { justify-content: flex-end; }
-  .meta-row div {
+  .stage[data-pos="center"] .meta-row { justify-content: center; }
+  .meta-row > div {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--text-faint);
   }
-  .meta-row div strong {
+  .meta-row > div strong {
     display: block;
     font-family: 'Fraunces', serif;
     font-weight: 400;
-    font-size: 20px;
+    font-size: 22px;
     text-transform: none;
     letter-spacing: -0.02em;
     color: var(--text);
     margin-top: 6px;
   }
 
-  .stack-pills {
+  /* Stack pills (colorful) */
+  .pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     margin-top: 24px;
   }
-  .stage[data-pos="right"] .stack-pills { justify-content: flex-end; }
-  .stack-pills span {
-    font-size: 10px;
-    padding: 5px 11px;
-    border: 1px solid rgba(157, 255, 206, 0.2);
+  .stage[data-pos="right"] .pills { justify-content: flex-end; }
+  .pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     color: var(--text-dim);
-    letter-spacing: 0.05em;
-    background: rgba(5, 5, 7, 0.4);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    transition: all 0.25s;
+    letter-spacing: 0.02em;
   }
-  .stack-pills span.primary {
-    background: var(--phosphor);
-    color: var(--void);
-    border-color: var(--phosphor);
-    font-weight: 600;
+  .pill:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+  .pill.cyan    { background: rgba(0, 229, 255, 0.12);   border-color: rgba(0, 229, 255, 0.4);   color: var(--cyan); }
+  .pill.magenta { background: rgba(255, 62, 197, 0.12);  border-color: rgba(255, 62, 197, 0.4);  color: var(--magenta); }
+  .pill.lime    { background: rgba(194, 255, 62, 0.12);  border-color: rgba(194, 255, 62, 0.4);  color: var(--lime); }
+  .pill.gold    { background: rgba(255, 210, 62, 0.12);  border-color: rgba(255, 210, 62, 0.4);  color: var(--gold); }
+  .pill.lavender{ background: rgba(184, 94, 255, 0.14);  border-color: rgba(184, 94, 255, 0.4);  color: var(--lavender); }
+  .pill.coral   { background: rgba(255, 110, 61, 0.12);  border-color: rgba(255, 110, 61, 0.4);  color: var(--coral); }
+
+  /* Capability cards */
+  .cap-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 24px;
+    max-width: 580px;
+  }
+  .stage[data-pos="right"] .cap-grid { margin-left: auto; }
+  .cap-card {
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(13, 10, 38, 0.55);
+    backdrop-filter: blur(20px);
+    text-align: left;
+  }
+  .cap-card .icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .cap-card:nth-child(1) .icon { color: var(--cyan); }
+  .cap-card:nth-child(2) .icon { color: var(--magenta); }
+  .cap-card:nth-child(3) .icon { color: var(--lime); }
+  .cap-card:nth-child(4) .icon { color: var(--gold); }
+  .cap-card:nth-child(5) .icon { color: var(--lavender); }
+  .cap-card:nth-child(6) .icon { color: var(--coral); }
+  .cap-card h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 17px;
+    color: var(--text);
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .cap-card p {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    margin: 0;
+    max-width: none;
   }
 
-  /* Stats stage */
+  /* Stats */
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
-    margin-top: 32px;
-    max-width: 520px;
+    gap: 16px;
+    margin-top: 28px;
+    max-width: 540px;
   }
   .stage[data-pos="right"] .stats-grid { margin-left: auto; }
   .stat-card {
-    border: 1px solid rgba(157, 255, 206, 0.15);
-    background: rgba(5, 5, 7, 0.5);
-    backdrop-filter: blur(10px);
-    padding: 24px;
+    border-radius: 16px;
+    padding: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(13, 10, 38, 0.55);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    position: relative;
   }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--card-glow);
+    opacity: 0.5;
+    z-index: 0;
+  }
+  .stat-card:nth-child(1) { --card-glow: radial-gradient(circle at top right, rgba(0,229,255,0.18), transparent 70%); }
+  .stat-card:nth-child(2) { --card-glow: radial-gradient(circle at top right, rgba(255,62,197,0.18), transparent 70%); }
+  .stat-card:nth-child(3) { --card-glow: radial-gradient(circle at top right, rgba(194,255,62,0.18), transparent 70%); }
+  .stat-card:nth-child(4) { --card-glow: radial-gradient(circle at top right, rgba(255,210,62,0.18), transparent 70%); }
+  .stat-card > * { position: relative; z-index: 1; }
   .stat-card .v {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-size: 48px;
+    font-size: 52px;
     line-height: 1;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
     color: var(--text);
-    font-variation-settings: 'SOFT' 60;
+    font-variation-settings: 'SOFT' 70;
   }
-  .stat-card .v em {
-    color: var(--phosphor);
-    font-style: italic;
-  }
+  .stat-card:nth-child(1) .v em { color: var(--cyan); }
+  .stat-card:nth-child(2) .v em { color: var(--magenta); }
+  .stat-card:nth-child(3) .v em { color: var(--lime); }
+  .stat-card:nth-child(4) .v em { color: var(--gold); }
+  .stat-card .v em { font-style: italic; }
   .stat-card .l {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--text-dim);
-    margin-top: 8px;
+    margin-top: 10px;
   }
 
-  /* Contact stage */
+  /* Meta proof box */
+  .proof-box {
+    margin-top: 24px;
+    padding: 24px 26px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(184, 94, 255, 0.08) 50%, rgba(255, 62, 197, 0.08) 100%);
+    backdrop-filter: blur(20px);
+    max-width: 580px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage[data-pos="right"] .proof-box { margin-left: auto; }
+  .proof-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 20px;
+    background: var(--gradient);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .proof-box .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+  .proof-box p {
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0;
+    color: var(--text);
+    max-width: none;
+  }
+
+  /* CTA */
   .cta {
     display: inline-flex;
     align-items: center;
     gap: 14px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     text-decoration: none;
-    color: var(--void);
-    background: var(--phosphor);
-    padding: 18px 32px;
-    border: 1px solid var(--phosphor);
-    margin-top: 24px;
-    transition: all 0.3s;
+    color: var(--ink);
+    background: var(--gradient);
+    padding: 20px 32px;
+    border-radius: 100px;
+    margin-top: 28px;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    font-weight: 600;
+    box-shadow: 0 0 0 0 rgba(184, 94, 255, 0.5);
+    position: relative;
+    overflow: hidden;
   }
   .cta:hover {
-    background: transparent;
-    color: var(--phosphor);
-    box-shadow: 0 0 30px var(--glow);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(184, 94, 255, 0.4), 0 0 30px rgba(0, 229, 255, 0.4);
   }
   .cta svg { transition: transform 0.3s; }
   .cta:hover svg { transform: translateX(6px); }
@@ -490,123 +700,189 @@
   .contact-links {
     display: flex;
     gap: 28px;
-    margin-top: 32px;
+    margin-top: 28px;
     flex-wrap: wrap;
   }
   .stage[data-pos="center"] .contact-links { justify-content: center; }
   .contact-links a {
     color: var(--text-dim);
     text-decoration: none;
-    font-size: 10px;
-    letter-spacing: 0.25em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    transition: color 0.3s;
+    transition: all 0.3s;
+    padding: 8px 0;
+    border-bottom: 1px solid transparent;
   }
-  .contact-links a:hover { color: var(--phosphor); }
+  .contact-links a:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
 
-  /* Free-explore mode: hide stage content and rail */
-  body.free-mode .stage,
-  body.free-mode .rail,
-  body.free-mode .scroll-prompt {
-    opacity: 0 !important;
-    pointer-events: none;
-  }
-  body.free-mode .free-banner {
-    opacity: 1;
-  }
-  .free-banner {
-    position: absolute;
-    top: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10px;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    color: var(--amber);
-    padding: 10px 18px;
-    border: 1px solid rgba(255, 182, 39, 0.4);
-    background: rgba(5, 5, 7, 0.6);
-    backdrop-filter: blur(10px);
-    opacity: 0;
-    transition: opacity 0.3s;
-    text-align: center;
-  }
-  .free-banner span { color: var(--text-dim); margin-left: 12px; }
-
-  /* Loader */
+  /* ============================================================
+     LOADER
+     ============================================================ */
   .loader {
     position: fixed;
     inset: 0;
-    background: var(--void);
+    background: var(--ink);
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 24px;
-    transition: opacity 0.8s 0.3s, visibility 0.8s 0.3s;
+    transition: opacity 0.8s 0.4s, visibility 0.8s 0.4s;
   }
   .loader.done { opacity: 0; visibility: hidden; }
   .loader .name {
     font-family: 'Fraunces', serif;
     font-weight: 300;
-    font-size: 32px;
+    font-size: 40px;
     letter-spacing: -0.02em;
-    font-variation-settings: 'SOFT' 60;
+    font-variation-settings: 'SOFT' 80;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .loader .name span { color: var(--phosphor); }
   .loader .bar {
     width: 240px; height: 1px;
-    background: var(--line);
+    background: rgba(255, 255, 255, 0.1);
     overflow: hidden;
   }
   .loader .bar::after {
     content: '';
     display: block;
     height: 100%;
-    background: var(--phosphor);
-    animation: load 1.6s ease forwards;
+    background: var(--gradient-2);
+    animation: load 2s ease forwards;
+    background-size: 200% 100%;
   }
   @keyframes load {
-    from { width: 0; }
-    to { width: 100%; }
+    from { width: 0; background-position: 0% 0%; }
+    to   { width: 100%; background-position: 100% 0%; }
   }
   .loader .label {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.4em;
     text-transform: uppercase;
     color: var(--text-faint);
   }
 
-  /* Mobile */
-  @media (max-width: 768px) {
-    body { cursor: auto; font-size: 13px; }
-    .cursor, .cursor-dot { display: none; }
-    /* let touches pass through canvas to scroll the page */
+  /* ============================================================
+     MOBILE — make it work properly
+     ============================================================ */
+  @media (max-width: 820px) {
+    body { cursor: auto; font-size: 14px; }
+    .star-cursor { display: none !important; }
+
+    /* let touches pass through canvas so the page scrolls */
     #three-canvas { pointer-events: none; touch-action: pan-y; }
-    .stage-container { padding: 100px 24px 120px; }
-    .stage { max-width: 100%; left: 24px !important; right: 24px !important; text-align: left !important; }
-    .stage[data-pos="right"] .phase::after { display: none; }
-    .stage[data-pos="right"] .phase::before {
-      content: '';
-      width: 24px; height: 1px;
-      background: var(--phosphor);
-      display: inline-block;
+
+    .top-bar { padding: 14px 18px; }
+    .logo { font-size: 19px; }
+    .status-pill { padding: 6px 10px; font-size: 8.5px; gap: 7px; }
+    .status-pill .dot { width: 6px; height: 6px; }
+
+    .stage-container {
+      padding: 90px 22px 200px;
+      align-items: flex-start;
+    }
+    .stage {
+      max-width: 100%;
+      width: calc(100% - 44px);
+      left: 22px !important;
+      right: auto !important;
+      text-align: left !important;
+      top: 90px;
+    }
+    .stage[data-pos="center"] {
+      transform: translateY(50px);
+    }
+    .stage[data-pos="center"].active {
+      transform: translateY(0);
     }
     .stage[data-pos="right"] .meta-row,
-    .stage[data-pos="right"] .stack-pills,
-    .stage[data-pos="right"] .contact-links { justify-content: flex-start; }
-    .stage[data-pos="right"] .stats-grid { margin-left: 0; }
-    .stage[data-pos="right"] p { margin-left: 0; }
+    .stage[data-pos="right"] .pills,
+    .stage[data-pos="right"] .contact-links,
+    .stage[data-pos="center"] .meta-row,
+    .stage[data-pos="center"] .contact-links {
+      justify-content: flex-start;
+    }
+    .stage[data-pos="right"] p,
+    .stage[data-pos="center"] p,
+    .stage[data-pos="right"] .stats-grid,
+    .stage[data-pos="right"] .cap-grid,
+    .stage[data-pos="right"] .proof-box {
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .phase-tag { font-size: 9px; padding: 5px 12px; margin-bottom: 18px; }
+    .stage h1 { font-size: clamp(38px, 11vw, 60px); margin-bottom: 18px; }
+    .stage h2 { font-size: clamp(28px, 8vw, 44px); margin-bottom: 16px; }
+    .stage p { font-size: 13.5px; line-height: 1.65; margin-bottom: 14px; }
+    .lead { font-size: 17px; margin-bottom: 20px; }
+
+    .meta-row { gap: 22px; margin-top: 22px; }
+    .meta-row > div strong { font-size: 18px; }
+
+    .cap-grid { grid-template-columns: 1fr; gap: 10px; max-width: 100%; }
+    .cap-card { padding: 14px; }
+    .cap-card h4 { font-size: 15px; }
+    .cap-card p { font-size: 11.5px; }
+
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 100%; }
+    .stat-card { padding: 16px; }
+    .stat-card .v { font-size: 36px; }
+    .stat-card .l { font-size: 9px; margin-top: 6px; }
+
+    .proof-box { padding: 18px; }
+    .proof-box p { font-size: 13px; }
+
+    .cta { padding: 16px 24px; font-size: 11px; margin-top: 20px; }
+    .contact-links { gap: 18px; margin-top: 22px; }
+    .contact-links a { font-size: 10px; padding: 6px 0; }
+
+    .pills { gap: 6px; margin-top: 18px; }
+    .pill { padding: 5px 11px; font-size: 10px; }
+
+    /* HUD */
     .rail { display: none; }
-    .telemetry { font-size: 9px; padding: 8px 12px; }
-    .telemetry > div:nth-child(n+5) { display: none; } /* hide cam coords on mobile */
-    .controls { gap: 6px; }
-    .ctrl-btn { padding: 10px 12px; font-size: 9px; }
-    #btnExplore { display: none; } /* free-explore needs pointer events on canvas */
-    .meta-row { gap: 24px; }
-    .stats-grid { grid-template-columns: 1fr; gap: 16px; }
-    .hint { display: none; }
+    .telemetry {
+      bottom: 14px; left: 14px;
+      font-size: 8.5px; padding: 8px 12px;
+      grid-template-columns: auto auto auto auto;
+      gap: 3px 12px;
+    }
+    .telemetry > div { white-space: nowrap; }
+    /* hide camera coords on mobile, keep lat/lon/fps */
+    .telemetry [data-mobile-hide] { display: none; }
+
+    .controls {
+      bottom: 14px; right: 14px;
+      gap: 6px;
+    }
+    .ctrl-btn { padding: 9px 12px; font-size: 9px; letter-spacing: 0.18em; }
+    #btnExplore { display: none; } /* drag conflict with scroll */
+
+    .scroll-hint { bottom: 70px; font-size: 9px; }
+    .scroll-hint .arrow { height: 22px; }
+
+    .interaction-hint, .free-banner { display: none; }
+
+    .loader .name { font-size: 32px; }
+  }
+
+  @media (max-width: 420px) {
+    .stage h1 { font-size: clamp(34px, 12vw, 52px); }
+    .stage h2 { font-size: clamp(26px, 9vw, 40px); }
+    .stat-card .v { font-size: 32px; }
+    .telemetry { font-size: 8px; padding: 6px 10px; }
+    .ctrl-btn { padding: 8px 10px; }
   }
 </style>
 </head>
@@ -616,63 +892,52 @@
      LOADER
      ============================================================ -->
 <div class="loader" id="loader">
-  <div class="name">s<span>.</span>k</div>
+  <div class="name">s.k</div>
   <div class="bar"></div>
-  <div class="label">Initialising 3D environment</div>
+  <div class="label">Architecting environment</div>
 </div>
 
-<!-- ============================================================
-     3D CANVAS + CURSOR + GRAIN
-     ============================================================ -->
+<!-- 3D + overlays -->
 <canvas id="three-canvas"></canvas>
+<div class="vignette"></div>
 <div class="grain"></div>
-<div class="cursor"></div>
-<div class="cursor-dot"></div>
 
-<!-- ============================================================
-     HUD
-     ============================================================ -->
+<!-- Star cursor trail (filled by JS) -->
+<div id="starCursorRoot"></div>
+
+<!-- HUD -->
 <div class="hud">
 
-  <!-- Top bar -->
   <div class="top-bar">
-    <div class="logo">s<span>.</span>k</div>
-    <div class="status-pill"><span class="dot"></span>Online · Open to roles</div>
+    <div class="logo">shiva·krishna</div>
+    <div class="status-pill"><span class="dot"></span>Available · Open to AI roles</div>
   </div>
 
-  <!-- Interaction hint (auto-fades) -->
-  <div class="hint">Drag to rotate · Scroll to journey</div>
+  <div class="interaction-hint">Drag to orbit · Scroll to dive</div>
+  <div class="free-banner">⌖ Free Explore<span>drag · pinch · pan</span></div>
 
-  <!-- Free-explore banner -->
-  <div class="free-banner">⌖ Free Explore Mode<span>drag · scroll-zoom · right-drag-pan</span></div>
-
-  <!-- Right-edge stage rail -->
   <nav class="rail" id="rail">
-    <button class="rail-item active" data-jump="0">Genesis</button>
-    <button class="rail-item" data-jump="1">Identity</button>
+    <button class="rail-item active" data-jump="0">Surface</button>
+    <button class="rail-item" data-jump="1">Mind</button>
     <button class="rail-item" data-jump="2">Stack</button>
-    <button class="rail-item" data-jump="3">Experience</button>
-    <button class="rail-item" data-jump="4">Numbers</button>
-    <button class="rail-item" data-jump="5">Contact</button>
+    <button class="rail-item" data-jump="3">Craft</button>
+    <button class="rail-item" data-jump="4">Proof</button>
+    <button class="rail-item" data-jump="5">Meta</button>
+    <button class="rail-item" data-jump="6">Connect</button>
   </nav>
 
-  <!-- Initial scroll prompt -->
-  <div class="scroll-prompt" id="scrollPrompt">
-    Scroll to begin
-    <div class="line"></div>
+  <div class="scroll-hint" id="scrollHint">
+    Scroll to dive deeper
+    <div class="arrow"></div>
   </div>
 
-  <!-- Bottom telemetry -->
   <div class="telemetry" id="telemetry">
-    <div class="label">Lat</div><div class="val" id="telLat">17.385°N</div>
-    <div class="label">Lon</div><div class="val">78.486°E</div>
-    <div class="label">Cam·X</div><div class="val" id="telCamX">+000.0</div>
-    <div class="label">Cam·Y</div><div class="val" id="telCamY">+000.0</div>
-    <div class="label">Cam·Z</div><div class="val" id="telCamZ">+000.0</div>
-    <div class="label">FPS</div><div class="val" id="telFps">--</div>
+    <div class="lbl">Loc</div><div class="val">Hyderabad·IN</div>
+    <div class="lbl" data-mobile-hide>Cam·X</div><div class="val" id="telCamX" data-mobile-hide>+000</div>
+    <div class="lbl" data-mobile-hide>Cam·Z</div><div class="val" id="telCamZ" data-mobile-hide>+000</div>
+    <div class="lbl">FPS</div><div class="val warm" id="telFps">--</div>
   </div>
 
-  <!-- Bottom controls -->
   <div class="controls">
     <button class="ctrl-btn" id="btnExplore">⌖ Free Explore</button>
     <button class="ctrl-btn" id="btnReset">⟲ Reset</button>
@@ -680,96 +945,146 @@
 
 </div>
 
-<!-- ============================================================
-     SCROLLABLE CONTENT — provides scroll length + content overlays
-     ============================================================ -->
+<!-- Scroll length driver -->
 <div class="scroll-track"></div>
 
-<!-- Stages: fixed overlays that fade based on scroll progress -->
+<!-- Stage overlays -->
 <div class="stage-container">
 
-  <!-- STAGE 0 — GENESIS -->
+  <!-- 0: SURFACE -->
   <div class="stage active" data-stage="0" data-pos="center">
-    <div class="phase">Phase 00 — Genesis</div>
+    <div class="phase-tag">Phase 00 · Surface</div>
     <h1>Erumalla<br><em>Shiva Krishna</em></h1>
-    <p style="text-align:center; margin: 0 auto;">Python engineer · Operations analyst · Pattern hunter.<br>Hyderabad, India.</p>
-    <div class="meta-row" style="justify-content:center;">
+    <p class="lead">AI Engineer · Prompt Architect · Solution Designer</p>
+    <p>Building intelligent systems through language.<br>This is not a portfolio. This is a dive.</p>
+    <div class="meta-row">
+      <div>Based in<strong>Hyderabad</strong></div>
+      <div>Discipline<strong>AI Engineering</strong></div>
       <div>Status<strong>Open</strong></div>
-      <div>Experience<strong>2+ years</strong></div>
-      <div>Focus<strong>Automation</strong></div>
     </div>
   </div>
 
-  <!-- STAGE 1 — IDENTITY -->
+  <!-- 1: MIND -->
   <div class="stage" data-stage="1" data-pos="left">
-    <div class="phase">Phase 01 — Identity</div>
-    <h2>I engineer<br><em>decisions</em><br>from noise.</h2>
-    <p>The hard part isn't writing code that runs. It's building systems that hold under <strong>adversarial</strong> conditions, fail in ways you can <strong>measure</strong>, and ship with evidence to prove they're safe.</p>
-    <p>Background in phishing &amp; abuse investigation. Now shipping production Python automation at Amazon ADCI — with a regression suite for every assumption.</p>
+    <div class="phase-tag">Phase 01 · Mind</div>
+    <h2>I engineer<br><em>thought</em><br>into systems.</h2>
+    <p>I'm an AI engineer obsessed with the seam between <strong>language</strong> and <strong>machinery</strong>. I treat prompts as software — composable, versioned, tested against ground truth, monitored in production.</p>
+    <p>My background runs from <em>adversarial pattern hunting</em> to <em>production Python automation</em>. The same instincts that find a phishing kit's tells are the instincts that find a prompt's failure modes before users do.</p>
   </div>
 
-  <!-- STAGE 2 — STACK -->
+  <!-- 2: STACK -->
   <div class="stage" data-stage="2" data-pos="right">
-    <div class="phase">Phase 02 — Toolkit</div>
-    <h2>The <em>stack</em>.</h2>
-    <p>Production languages, async pipelines, scraping infrastructure, and the analytical instruments that turn raw events into measurable decisions.</p>
-    <div class="stack-pills">
-      <span class="primary">Python</span>
-      <span class="primary">FastAPI</span>
-      <span class="primary">asyncio</span>
-      <span>Playwright</span>
-      <span>cloudscraper</span>
-      <span>httpx</span>
-      <span>BeautifulSoup</span>
-      <span>pandas</span>
-      <span>openpyxl</span>
-      <span>SQL</span>
-      <span>Docker</span>
-      <span>uvicorn</span>
-      <span>regex</span>
-      <span>JSON-LD</span>
-      <span>Bash</span>
-      <span>Java</span>
-      <span>C / C++</span>
+    <div class="phase-tag">Phase 02 · Stack</div>
+    <h2>The <em>instrument</em><br>I play.</h2>
+    <p>A toolkit assembled around production reliability — Python at the core, async pipelines for scale, evaluation harnesses for trust, LLM ecosystems for intelligence.</p>
+    <div class="pills">
+      <span class="pill cyan">Python</span>
+      <span class="pill cyan">FastAPI</span>
+      <span class="pill cyan">asyncio</span>
+      <span class="pill magenta">Claude</span>
+      <span class="pill magenta">GPT</span>
+      <span class="pill magenta">Gemini</span>
+      <span class="pill magenta">MCP</span>
+      <span class="pill lime">RAG</span>
+      <span class="pill lime">Embeddings</span>
+      <span class="pill lime">Vector DBs</span>
+      <span class="pill gold">Playwright</span>
+      <span class="pill gold">httpx</span>
+      <span class="pill gold">BeautifulSoup</span>
+      <span class="pill lavender">pandas</span>
+      <span class="pill lavender">SQL</span>
+      <span class="pill coral">Docker</span>
+      <span class="pill coral">Bash</span>
     </div>
   </div>
 
-  <!-- STAGE 3 — EXPERIENCE -->
+  <!-- 3: CRAFT -->
   <div class="stage" data-stage="3" data-pos="left">
-    <div class="phase">Phase 03 — Trajectory</div>
-    <h2>Where I've <em>shipped</em>.</h2>
-    <p><strong>Amazon ADCI — Catalog Assistant</strong> · Apr 2025 → Present<br>
-    Production Python automation across 11 international marketplaces. Tuned async concurrency 8 → 24, achieving 3–5× throughput. Raised auto-decision rate from ~50% to ~98% on a 1,655-row regression suite while preserving a zero-false-approval guarantee.</p>
-    <p><strong>Wipro Limited — Phishing Threat Associate</strong> · Sep 2023 → Dec 2024<br>
-    Investigated phishing, cloaking, and brand-impersonation across banking, crypto, and e-commerce. Adversarial instincts that translate directly to LLM red-teaming and safety eval design.</p>
+    <div class="phase-tag">Phase 03 · Craft</div>
+    <h2>What I <em>actually do</em>.</h2>
+    <p>Six disciplines, one practice — making language behave like infrastructure.</p>
+    <div class="cap-grid">
+      <div class="cap-card">
+        <div class="icon">◇ 001</div>
+        <h4>Prompt Architecture</h4>
+        <p>System prompts engineered as software. Composable, versioned, regression-tested.</p>
+      </div>
+      <div class="cap-card">
+        <div class="icon">◈ 002</div>
+        <h4>Evaluation Pipelines</h4>
+        <p>LLM-as-judge harnesses, rubric scoring, golden sets. Every change measured.</p>
+      </div>
+      <div class="cap-card">
+        <div class="icon">◆ 003</div>
+        <h4>RAG &amp; Retrieval</h4>
+        <p>Hybrid retrieval, re-ranking, citation grounding. Answers that don't hallucinate.</p>
+      </div>
+      <div class="cap-card">
+        <div class="icon">★ 004</div>
+        <h4>Agent Design</h4>
+        <p>Tool-using agents with bounded scope, explicit guardrails, reasonable failure modes.</p>
+      </div>
+      <div class="cap-card">
+        <div class="icon">⬡ 005</div>
+        <h4>Red-Teaming</h4>
+        <p>Jailbreak corpora, prompt injection probes, refusal evals. Failures found before users.</p>
+      </div>
+      <div class="cap-card">
+        <div class="icon">⚡ 006</div>
+        <h4>Production Debugging</h4>
+        <p>Race conditions, drift detection, log forensics. Built for systems that must hold.</p>
+      </div>
+    </div>
   </div>
 
-  <!-- STAGE 4 — STATS -->
+  <!-- 4: PROOF -->
   <div class="stage" data-stage="4" data-pos="right">
-    <div class="phase">Phase 04 — Receipts</div>
-    <h2>A <em>track record</em>.</h2>
-    <p>Numbers from production. Every claim backed by a regression suite, a labelled dataset, and a documented post-mortem.</p>
+    <div class="phase-tag">Phase 04 · Proof</div>
+    <h2>The <em>shape</em><br>of the work.</h2>
+    <p>Numbers describing how I operate — not what I made, but how I make.</p>
     <div class="stats-grid">
-      <div class="stat-card"><div class="v">11</div><div class="l">Marketplaces served</div></div>
-      <div class="stat-card"><div class="v">98<em>%</em></div><div class="l">Auto-decision rate</div></div>
-      <div class="stat-card"><div class="v">1,655</div><div class="l">Labelled regression rows</div></div>
-      <div class="stat-card"><div class="v">0</div><div class="l">False approvals shipped</div></div>
+      <div class="stat-card">
+        <div class="v">2<em>+</em></div>
+        <div class="l">Years building production</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">4<em>+</em></div>
+        <div class="l">LLM ecosystems shipped on</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">11<em>+</em></div>
+        <div class="l">Tools in active rotation</div>
+      </div>
+      <div class="stat-card">
+        <div class="v">0</div>
+        <div class="l">Untested prompts in prod</div>
+      </div>
     </div>
   </div>
 
-  <!-- STAGE 5 — CONTACT -->
-  <div class="stage" data-stage="5" data-pos="center">
-    <div class="phase">Phase 05 — Signal</div>
-    <h1>Let's build the<br>next <em>system</em>.</h1>
-    <p style="text-align:center; margin: 0 auto;">Open to AI engineering, automation, and systems roles.<br>Remote-friendly · Based in Hyderabad.</p>
-    <div style="text-align:center;">
-      <a class="cta" href="mailto:shivakrishnaerumalla@gmail.com">
-        shivakrishnaerumalla@gmail.com
-        <svg width="18" height="11" viewBox="0 0 20 12" fill="none">
-          <path d="M14 1L19 6L14 11M19 6H1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </a>
+  <!-- 5: META -->
+  <div class="stage" data-stage="5" data-pos="left">
+    <div class="phase-tag">Phase 05 · Meta</div>
+    <h2>You are inside<br>the <em>proof</em>.</h2>
+    <p>This entire experience — the 3D world, the camera dive, the cursor that follows you in stars, the colors that shift as you scroll — was <strong>architected through prompts</strong>.</p>
+    <p>This is what the next decade of building looks like: an AI engineer who can describe a system precisely enough to make it real. Not "vibe-coded" — <em>composed</em>. Specified, evaluated, iterated, shipped.</p>
+    <div class="proof-box">
+      <div class="label">⚡ The thesis</div>
+      <p>The hire isn't someone who writes code. The hire is someone who can architect intent into systems — across language, machinery, and the seams between them. That's the engineer this site is meant to introduce.</p>
     </div>
+  </div>
+
+  <!-- 6: CONNECT -->
+  <div class="stage" data-stage="6" data-pos="center">
+    <div class="phase-tag">Phase 06 · Connect</div>
+    <h1>Let's build the<br><em>next layer</em>.</h1>
+    <p>Open to AI engineering, prompt engineering, and solution architect roles. Remote-friendly. Based in Hyderabad.</p>
+    <a class="cta" href="mailto:shivakrishnaerumalla@gmail.com">
+      shivakrishnaerumalla@gmail.com
+      <svg width="18" height="11" viewBox="0 0 20 12" fill="none">
+        <path d="M14 1L19 6L14 11M19 6H1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
     <div class="contact-links">
       <a href="tel:+919010620164">+91 90106 20164</a>
       <a href="https://github.com/shivakrishnaa" target="_blank" rel="noopener">GitHub ↗</a>
@@ -782,82 +1097,154 @@
 
 <script>
 /* =====================================================================
-   ERUMALLA SHIVA KRISHNA · 3D PORTFOLIO
-   Single Three.js scene, scroll-driven camera, drag-to-rotate,
-   momentum physics, free-explore orbit controls.
+   3D PORTFOLIO — Shiva Krishna · AI Engineer
+   Single canvas · colorful · star-trail cursor · mobile-friendly
    ===================================================================== */
-
 (function() {
 'use strict';
 
-const isMobile = window.matchMedia('(max-width: 768px)').matches;
-const COLORS = {
-  phosphor: 0x9dffce,
-  phosphorDim: 0x4a8a6e,
-  signal: 0xff5b3a,
-  amber: 0xffb627,
-  void: 0x050507,
+const isMobile = window.matchMedia('(max-width: 820px)').matches;
+const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
+const C = {
+  cyan:     0x00e5ff,
+  magenta:  0xff3ec5,
+  lime:     0xc2ff3e,
+  coral:    0xff6e3d,
+  gold:     0xffd23e,
+  lavender: 0xb85eff,
+  ink:      0x06051a,
 };
+const PALETTE = [C.cyan, C.magenta, C.lime, C.gold, C.lavender, C.coral];
 
 /* ===================================================================
-   1. RENDERER + SCENE + CAMERA
+   STAR CURSOR — multiple SVG stars trailing the mouse
+   =================================================================== */
+function initStarCursor() {
+  if (isCoarse || isMobile) return;
+  const root = document.getElementById('starCursorRoot');
+  const STAR_COUNT = 12;
+  const stars = [];
+
+  const COLORS_CSS = ['#00e5ff', '#b85eff', '#ff3ec5', '#ffd23e', '#c2ff3e', '#ff6e3d'];
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const size = Math.max(8, 26 - i * 1.6);
+    const opacity = 1 - i / STAR_COUNT;
+    const color = COLORS_CSS[i % COLORS_CSS.length];
+    const el = document.createElement('div');
+    el.className = 'star-cursor';
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.opacity = opacity.toFixed(2);
+    el.style.color = color;
+    el.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="${color}">
+        <path d="M12 0L14.39 8.26L23 9.27L16.5 14.97L18.18 24L12 19.27L5.82 24L7.5 14.97L1 9.27L9.61 8.26L12 0Z"/>
+      </svg>`;
+    root.appendChild(el);
+    stars.push({ el, x: -100, y: -100, tx: -100, ty: -100, lerp: 0.42 - i * 0.025 });
+  }
+
+  let mx = -100, my = -100;
+  window.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; });
+
+  let rotation = 0;
+  function tick() {
+    rotation += 0.6;
+    /* first star follows mouse, each subsequent star follows previous */
+    stars[0].tx = mx; stars[0].ty = my;
+    for (let i = 1; i < stars.length; i++) {
+      stars[i].tx = stars[i-1].x;
+      stars[i].ty = stars[i-1].y;
+    }
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      s.x += (s.tx - s.x) * s.lerp;
+      s.y += (s.ty - s.y) * s.lerp;
+      const r = rotation - i * 8;
+      s.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -50%) rotate(${r}deg)`;
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
+initStarCursor();
+
+/* ===================================================================
+   THREE.JS — SCENE SETUP
    =================================================================== */
 const canvas = document.getElementById('three-canvas');
 const renderer = new THREE.WebGLRenderer({
-  canvas, antialias: true, alpha: false,
+  canvas, antialias: !isMobile, alpha: false,
   powerPreference: 'high-performance',
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(COLORS.void, 1);
+renderer.setClearColor(C.ink, 1);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(COLORS.void, 0.0055);
+scene.fog = new THREE.FogExp2(C.ink, 0.0035);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 4000);
-camera.position.set(0, 0, 220);
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 5000);
+camera.position.set(0, 8, 200);
 
 /* ===================================================================
-   2. LIGHTING
+   LIGHTS — multi-color
    =================================================================== */
-scene.add(new THREE.AmbientLight(0x202028, 0.6));
+scene.add(new THREE.AmbientLight(0x222244, 0.45));
 
-const keyLight = new THREE.PointLight(COLORS.phosphor, 2.2, 400, 1.6);
-keyLight.position.set(40, 60, 40);
-scene.add(keyLight);
-
-const rimLight = new THREE.PointLight(COLORS.signal, 1.4, 300, 1.8);
-rimLight.position.set(-60, -20, -40);
-scene.add(rimLight);
-
-const fillLight = new THREE.PointLight(COLORS.amber, 0.8, 250, 1.8);
-fillLight.position.set(0, -80, 60);
-scene.add(fillLight);
+const lights = {
+  cyan:     new THREE.PointLight(C.cyan,     2.4, 500, 1.6),
+  magenta:  new THREE.PointLight(C.magenta,  2.0, 450, 1.6),
+  lime:     new THREE.PointLight(C.lime,     1.6, 400, 1.6),
+  gold:     new THREE.PointLight(C.gold,     1.4, 380, 1.6),
+  lavender: new THREE.PointLight(C.lavender, 2.2, 480, 1.6),
+};
+lights.cyan.position.set(50, 40, 60);
+lights.magenta.position.set(-60, -30, 40);
+lights.lime.position.set(40, -60, -50);
+lights.gold.position.set(-50, 50, -30);
+lights.lavender.position.set(0, 0, -80);
+Object.values(lights).forEach(l => scene.add(l));
 
 /* ===================================================================
-   3. STAR FIELD (background)
+   STARS — colorful background
    =================================================================== */
 function makeStars() {
-  const count = isMobile ? 1500 : 3500;
+  const count = isMobile ? 1500 : 4000;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+
+  const palCol = [
+    [0.0, 0.9, 1.0],   // cyan
+    [1.0, 0.24, 0.77], // magenta
+    [0.76, 1.0, 0.24], // lime
+    [1.0, 0.82, 0.24], // gold
+    [0.72, 0.37, 1.0], // lavender
+    [1.0, 1.0, 1.0],   // white
+    [1.0, 1.0, 1.0],
+    [1.0, 1.0, 1.0],
+  ];
+
   for (let i = 0; i < count; i++) {
-    const r = 800 + Math.random() * 1200;
+    const r = 600 + Math.random() * 1400;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
     positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
     positions[i*3+2] = r * Math.cos(phi);
-    const tint = Math.random();
-    if (tint < 0.7) { colors[i*3]=0.6; colors[i*3+1]=1.0; colors[i*3+2]=0.8; }
-    else if (tint < 0.9) { colors[i*3]=0.9; colors[i*3+1]=0.8; colors[i*3+2]=0.4; }
-    else { colors[i*3]=1.0; colors[i*3+1]=0.4; colors[i*3+2]=0.3; }
+    const col = palCol[Math.floor(Math.random() * palCol.length)];
+    colors[i*3] = col[0]; colors[i*3+1] = col[1]; colors[i*3+2] = col[2];
+    sizes[i] = 1 + Math.random() * 3;
   }
+
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   const mat = new THREE.PointsMaterial({
-    size: 2.2, vertexColors: true, transparent: true, opacity: 0.85,
+    size: 2.2, vertexColors: true, transparent: true, opacity: 0.9,
     sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
   });
   return new THREE.Points(geo, mat);
@@ -866,45 +1253,41 @@ const stars = makeStars();
 scene.add(stars);
 
 /* ===================================================================
-   4. THE CORE — multi-layered central object
+   CENTRAL CORE — iridescent multi-layer
    =================================================================== */
 const core = new THREE.Group();
 
-/* Inner glowing icosa */
-const coreInner = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(5, 1),
+const coreCenter = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(4, 1),
   new THREE.MeshStandardMaterial({
-    color: COLORS.signal, emissive: COLORS.signal, emissiveIntensity: 1.4,
-    metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.95,
+    color: 0xffffff, emissive: C.cyan, emissiveIntensity: 1.6,
+    metalness: 0.3, roughness: 0.25, transparent: true, opacity: 0.95,
   })
 );
-core.add(coreInner);
+core.add(coreCenter);
 
-/* Middle wireframe */
 const coreMid = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(9, 1),
+  new THREE.IcosahedronGeometry(7, 0),
   new THREE.MeshBasicMaterial({
-    color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.7,
+    color: C.magenta, wireframe: true, transparent: true, opacity: 0.8,
   })
 );
 core.add(coreMid);
 
-/* Outer crystal shell */
-const coreOuter = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(13, 0),
+const coreShell = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(11, 0),
   new THREE.MeshStandardMaterial({
-    color: COLORS.phosphor, emissive: COLORS.phosphor, emissiveIntensity: 0.3,
-    metalness: 0.9, roughness: 0.15, transparent: true, opacity: 0.18,
+    color: C.lavender, emissive: C.lavender, emissiveIntensity: 0.5,
+    metalness: 0.85, roughness: 0.15, transparent: true, opacity: 0.18,
     side: THREE.DoubleSide, flatShading: true,
   })
 );
-core.add(coreOuter);
+core.add(coreShell);
 
-/* Wireframe outer cage */
 const coreCage = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(18, 0),
+  new THREE.IcosahedronGeometry(16, 0),
   new THREE.MeshBasicMaterial({
-    color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.25,
+    color: C.lime, wireframe: true, transparent: true, opacity: 0.3,
   })
 );
 core.add(coreCage);
@@ -912,388 +1295,309 @@ core.add(coreCage);
 scene.add(core);
 
 /* ===================================================================
-   5. ORBITAL RINGS (3 tilted)
+   ORBITAL RINGS — colorful, tilted
    =================================================================== */
 const rings = [];
 const ringConfigs = [
-  { r: 26, color: COLORS.phosphor, rot: [0, 0, 0],                       segments: 96 },
-  { r: 34, color: COLORS.phosphor, rot: [Math.PI/3, 0, Math.PI/4],       segments: 96 },
-  { r: 42, color: COLORS.amber,    rot: [Math.PI/6, Math.PI/3, 0],       segments: 128 },
+  { r: 24, color: C.cyan,     rot: [0, 0, 0],                       segs: 96 },
+  { r: 32, color: C.magenta,  rot: [Math.PI/3, 0, Math.PI/4],       segs: 96 },
+  { r: 40, color: C.gold,     rot: [Math.PI/6, Math.PI/3, 0],       segs: 128 },
+  { r: 50, color: C.lime,     rot: [-Math.PI/4, Math.PI/6, Math.PI/8], segs: 128 },
 ];
 ringConfigs.forEach(cfg => {
   const pts = [];
-  for (let i = 0; i <= cfg.segments; i++) {
-    const a = (i / cfg.segments) * Math.PI * 2;
+  for (let i = 0; i <= cfg.segs; i++) {
+    const a = (i / cfg.segs) * Math.PI * 2;
     pts.push(new THREE.Vector3(Math.cos(a) * cfg.r, 0, Math.sin(a) * cfg.r));
   }
   const geo = new THREE.BufferGeometry().setFromPoints(pts);
-  const mat = new THREE.LineBasicMaterial({
-    color: cfg.color, transparent: true, opacity: 0.5,
-  });
-  const ring = new THREE.Line(geo, mat);
-  ring.rotation.set(...cfg.rot);
-  ring.userData.cfg = cfg;
-  scene.add(ring);
-  rings.push(ring);
+  const mat = new THREE.LineBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.55 });
+  const r = new THREE.Line(geo, mat);
+  r.rotation.set(...cfg.rot);
+  r.userData.cfg = cfg;
+  scene.add(r);
+  rings.push(r);
 });
 
 /* ===================================================================
-   6. ORBITAL NODES (stack items, etc) — physical orbiting spheres
+   ORBITAL NODES — color-coded particles on each ring
    =================================================================== */
-const orbitNodes = [];
-const nodeCount = 36;
-for (let i = 0; i < nodeCount; i++) {
-  const ringIdx = i % 3;
+const nodes = [];
+const totalNodes = isMobile ? 28 : 56;
+for (let i = 0; i < totalNodes; i++) {
+  const ringIdx = i % rings.length;
   const cfg = ringConfigs[ringIdx];
-  const isHero = i % 7 === 0;
-  const mat = new THREE.MeshStandardMaterial({
-    color: isHero ? COLORS.signal : COLORS.phosphor,
-    emissive: isHero ? COLORS.signal : COLORS.phosphor,
-    emissiveIntensity: isHero ? 1.6 : 1.0,
-    metalness: 0.5, roughness: 0.3,
-  });
+  const isHero = i % 9 === 0;
   const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(isHero ? 0.55 : 0.32, 16, 16),
-    mat
-  );
-  scene.add(mesh);
-  orbitNodes.push({
-    mesh, ringIdx, cfg,
-    angle: (i / nodeCount) * Math.PI * 2 + Math.random() * 0.3,
-    speed: 0.0035 + Math.random() * 0.004,
-  });
-}
-
-/* ===================================================================
-   7. EXPERIENCE PILLARS — two large blocks representing roles
-   =================================================================== */
-const pillars = new THREE.Group();
-pillars.position.set(0, 0, 0);
-
-function makePillar(x, color, height) {
-  const grp = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({
-    color: color, emissive: color, emissiveIntensity: 0.4,
-    metalness: 0.6, roughness: 0.25, transparent: true, opacity: 0.85,
-  });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(6, height, 6), mat);
-  grp.add(body);
-  /* wireframe overlay */
-  const wire = new THREE.Mesh(
-    new THREE.BoxGeometry(6.1, height + 0.1, 6.1),
-    new THREE.MeshBasicMaterial({ color: color, wireframe: true, transparent: true, opacity: 0.5 })
-  );
-  grp.add(wire);
-  /* capping sphere */
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(2, 16, 16),
+    new THREE.SphereGeometry(isHero ? 0.55 : 0.3, 12, 12),
     new THREE.MeshStandardMaterial({
-      color: color, emissive: color, emissiveIntensity: 1.5,
+      color: cfg.color, emissive: cfg.color,
+      emissiveIntensity: isHero ? 1.8 : 1.1,
       metalness: 0.4, roughness: 0.3,
     })
   );
-  cap.position.y = height/2 + 2;
-  grp.add(cap);
-  grp.position.x = x;
-  grp.position.y = -height/2 + 5;
-  return grp;
+  scene.add(mesh);
+  nodes.push({
+    mesh, ringIdx, cfg,
+    angle: (i / totalNodes) * Math.PI * 2 + Math.random() * 0.3,
+    speed: 0.003 + Math.random() * 0.004,
+  });
 }
-const pillar1 = makePillar(-12, COLORS.phosphor, 32);  /* Amazon (longer) */
-const pillar2 = makePillar(+12, COLORS.amber, 22);     /* Wipro */
-pillars.add(pillar1);
-pillars.add(pillar2);
-pillars.position.set(80, -10, -30);
-scene.add(pillars);
 
 /* ===================================================================
-   8. STATS MONOLITHS — 4 floating slabs with glow
+   FLOATING SHAPES — colorful crystals scattered around
    =================================================================== */
-const statsGroup = new THREE.Group();
-const statsPositions = [
-  [-18, 8, 0], [18, 8, 0], [-18, -8, 0], [18, -8, 0],
+const shapes = [];
+const shapeDefs = [
+  { type: 'octa', size: 3.2,  color: C.magenta, pos: [55, 12, -10] },
+  { type: 'tetra', size: 3.5, color: C.cyan,    pos: [-58, -8, 5] },
+  { type: 'dodeca', size: 3,  color: C.lime,    pos: [40, -30, -40] },
+  { type: 'octa', size: 2.6,  color: C.gold,    pos: [-45, 35, -25] },
+  { type: 'tetra', size: 2.8, color: C.lavender,pos: [25, 45, 15] },
+  { type: 'dodeca', size: 2.4,color: C.coral,   pos: [-30, -45, 20] },
+  { type: 'octa', size: 2.2,  color: C.cyan,    pos: [70, -20, -60] },
+  { type: 'tetra', size: 2.4, color: C.magenta, pos: [-70, 25, -55] },
 ];
-const statsMonoliths = [];
-statsPositions.forEach((pos, i) => {
-  const mat = new THREE.MeshStandardMaterial({
-    color: i === 3 ? COLORS.signal : COLORS.phosphor,
-    emissive: i === 3 ? COLORS.signal : COLORS.phosphor,
-    emissiveIntensity: 0.8,
-    metalness: 0.8, roughness: 0.15,
-    transparent: true, opacity: 0.7,
-  });
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 0.6), mat);
-  slab.position.set(...pos);
-  const wire = new THREE.Mesh(
-    new THREE.BoxGeometry(12.1, 12.1, 0.7),
-    new THREE.MeshBasicMaterial({
-      color: i === 3 ? COLORS.signal : COLORS.phosphor,
-      wireframe: true, transparent: true, opacity: 0.4,
-    })
-  );
-  wire.position.copy(slab.position);
-  statsGroup.add(slab);
-  statsGroup.add(wire);
-  statsMonoliths.push({ slab, wire, basePos: pos.slice() });
-});
-statsGroup.position.set(-80, 5, -20);
-scene.add(statsGroup);
 
-/* ===================================================================
-   9. CONTACT PORTAL — torus ring with inner pulse
-   =================================================================== */
-const portal = new THREE.Group();
-const portalRing = new THREE.Mesh(
-  new THREE.TorusGeometry(14, 0.4, 24, 96),
-  new THREE.MeshStandardMaterial({
-    color: COLORS.phosphor, emissive: COLORS.phosphor, emissiveIntensity: 1.2,
-    metalness: 0.7, roughness: 0.2,
-  })
-);
-portal.add(portalRing);
-const portalCore = new THREE.Mesh(
-  new THREE.SphereGeometry(3, 24, 24),
-  new THREE.MeshStandardMaterial({
-    color: COLORS.signal, emissive: COLORS.signal, emissiveIntensity: 2.0,
-    transparent: true, opacity: 0.9,
-  })
-);
-portal.add(portalCore);
-const portalWire = new THREE.Mesh(
-  new THREE.TorusGeometry(18, 0.1, 16, 80),
-  new THREE.MeshBasicMaterial({ color: COLORS.phosphor, wireframe: true, transparent: true, opacity: 0.3 })
-);
-portalWire.rotation.x = Math.PI/2;
-portal.add(portalWire);
-portal.position.set(0, 0, -160);
-scene.add(portal);
-
-/* ===================================================================
-   10. PARTICLE FIELD — ambient atmosphere
-   =================================================================== */
-function makeParticleField() {
-  const N = isMobile ? 400 : 900;
-  const positions = new Float32Array(N * 3);
-  const bases = [];
-  for (let i = 0; i < N; i++) {
-    const x = (Math.random() - 0.5) * 400;
-    const y = (Math.random() - 0.5) * 250;
-    const z = (Math.random() - 0.5) * 400;
-    positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
-    bases.push({ x, y, z });
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const mat = new THREE.PointsMaterial({
-    color: COLORS.phosphor, size: 0.45, transparent: true, opacity: 0.55,
-    sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
-  });
-  const pts = new THREE.Points(geo, mat);
-  pts.userData.bases = bases;
-  return pts;
+function makeGeo(type, size) {
+  if (type === 'octa') return new THREE.OctahedronGeometry(size, 0);
+  if (type === 'tetra') return new THREE.TetrahedronGeometry(size, 0);
+  return new THREE.DodecahedronGeometry(size, 0);
 }
-const particles = makeParticleField();
-scene.add(particles);
+
+shapeDefs.forEach((d, i) => {
+  const grp = new THREE.Group();
+  const geo = makeGeo(d.type, d.size);
+  const solid = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: d.color, emissive: d.color, emissiveIntensity: 0.6,
+    metalness: 0.8, roughness: 0.2, transparent: true, opacity: 0.75,
+    flatShading: true,
+  }));
+  const wire = new THREE.Mesh(makeGeo(d.type, d.size * 1.05),
+    new THREE.MeshBasicMaterial({ color: d.color, wireframe: true, transparent: true, opacity: 0.7 })
+  );
+  grp.add(solid); grp.add(wire);
+  grp.position.set(...d.pos);
+  grp.userData = {
+    basePos: [...d.pos],
+    rotSpeed: [Math.random() * 0.01 + 0.005, Math.random() * 0.01 + 0.005, Math.random() * 0.005],
+    floatSpeed: 0.3 + Math.random() * 0.4,
+    floatAmp: 1 + Math.random() * 2,
+    phase: Math.random() * Math.PI * 2,
+    color: d.color,
+    solid, wire,
+  };
+  scene.add(grp);
+  shapes.push(grp);
+});
 
 /* ===================================================================
-   11. STREAMS — lines emanating from core
+   STREAMS — colorful lines from core
    =================================================================== */
-const streamCount = 48;
+const streamCount = isMobile ? 32 : 60;
 const streamPositions = new Float32Array(streamCount * 6);
-const streamData = [];
+const streamColors = new Float32Array(streamCount * 6);
 for (let i = 0; i < streamCount; i++) {
   const theta = Math.random() * Math.PI * 2;
   const phi = Math.acos(2 * Math.random() - 1);
-  const r1 = 18, r2 = 30 + Math.random() * 25;
+  const r1 = 16, r2 = 28 + Math.random() * 30;
   streamPositions[i*6]   = r1 * Math.sin(phi) * Math.cos(theta);
   streamPositions[i*6+1] = r1 * Math.sin(phi) * Math.sin(theta);
   streamPositions[i*6+2] = r1 * Math.cos(phi);
   streamPositions[i*6+3] = r2 * Math.sin(phi) * Math.cos(theta);
   streamPositions[i*6+4] = r2 * Math.sin(phi) * Math.sin(theta);
   streamPositions[i*6+5] = r2 * Math.cos(phi);
-  streamData.push({ theta, phi, r1, r2 });
+
+  const col = new THREE.Color(PALETTE[i % PALETTE.length]);
+  streamColors[i*6]   = col.r; streamColors[i*6+1] = col.g; streamColors[i*6+2] = col.b;
+  streamColors[i*6+3] = col.r; streamColors[i*6+4] = col.g; streamColors[i*6+5] = col.b;
 }
 const streamGeo = new THREE.BufferGeometry();
 streamGeo.setAttribute('position', new THREE.BufferAttribute(streamPositions, 3));
+streamGeo.setAttribute('color', new THREE.BufferAttribute(streamColors, 3));
 const streamMat = new THREE.LineBasicMaterial({
-  color: COLORS.phosphor, transparent: true, opacity: 0.3,
+  vertexColors: true, transparent: true, opacity: 0.5,
   blending: THREE.AdditiveBlending,
 });
 const streams = new THREE.LineSegments(streamGeo, streamMat);
 scene.add(streams);
 
 /* ===================================================================
-   12. CAMERA WAYPOINTS — scroll-driven path
+   PORTAL — at the far end (for contact)
+   =================================================================== */
+const portal = new THREE.Group();
+const portalRing = new THREE.Mesh(
+  new THREE.TorusGeometry(16, 0.4, 24, 100),
+  new THREE.MeshStandardMaterial({
+    color: C.cyan, emissive: C.cyan, emissiveIntensity: 1.5,
+    metalness: 0.7, roughness: 0.2,
+  })
+);
+portal.add(portalRing);
+
+const portalRing2 = new THREE.Mesh(
+  new THREE.TorusGeometry(20, 0.15, 16, 100),
+  new THREE.MeshBasicMaterial({ color: C.magenta, transparent: true, opacity: 0.7 })
+);
+portalRing2.rotation.x = Math.PI / 2;
+portal.add(portalRing2);
+
+const portalCore = new THREE.Mesh(
+  new THREE.SphereGeometry(2.8, 24, 24),
+  new THREE.MeshStandardMaterial({
+    color: 0xffffff, emissive: C.lavender, emissiveIntensity: 2.4,
+    transparent: true, opacity: 0.92,
+  })
+);
+portal.add(portalCore);
+
+portal.position.set(0, 0, -180);
+scene.add(portal);
+
+/* ===================================================================
+   AMBIENT PARTICLE FIELD
+   =================================================================== */
+function makeParticles() {
+  const N = isMobile ? 350 : 800;
+  const positions = new Float32Array(N * 3);
+  const colors = new Float32Array(N * 3);
+  const bases = [];
+  for (let i = 0; i < N; i++) {
+    const x = (Math.random() - 0.5) * 400;
+    const y = (Math.random() - 0.5) * 240;
+    const z = (Math.random() - 0.5) * 400;
+    positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
+    bases.push({ x, y, z });
+    const col = new THREE.Color(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+    colors[i*3] = col.r; colors[i*3+1] = col.g; colors[i*3+2] = col.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 0.6, vertexColors: true, transparent: true, opacity: 0.7,
+    sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.userData.bases = bases;
+  return pts;
+}
+const particles = makeParticles();
+scene.add(particles);
+
+/* ===================================================================
+   CAMERA WAYPOINTS — 7 stages
    =================================================================== */
 const waypoints = [
-  /* 0 GENESIS  — far, looking at core, slight tilt */
-  { pos: [0, 6, 130],     look: [0, 0, 0] },
-  /* 1 IDENTITY — closer, slight off-center */
-  { pos: [-30, 10, 60],   look: [0, 0, 0] },
-  /* 2 STACK    — high angle to see ring system */
-  { pos: [0, 55, 55],     look: [0, 0, 0] },
-  /* 3 EXPERIENCE — pan to the pillars */
-  { pos: [60, 8, 30],     look: [80, -10, -30] },
-  /* 4 STATS    — pan to monoliths */
-  { pos: [-60, 12, 30],   look: [-80, 5, -20] },
-  /* 5 CONTACT  — flying toward portal */
-  { pos: [0, 0, -100],    look: [0, 0, -160] },
+  /* 0 SURFACE */     { pos: [0, 8, 140],    look: [0, 0, 0] },
+  /* 1 MIND */        { pos: [-35, 12, 70],  look: [0, 0, 0] },
+  /* 2 STACK */       { pos: [40, 50, 50],   look: [0, 0, 0] },
+  /* 3 CRAFT */       { pos: [-55, -5, 45],  look: [0, 0, 0] },
+  /* 4 PROOF */       { pos: [50, 0, 25],    look: [0, 0, 0] },
+  /* 5 META */        { pos: [0, 35, 30],    look: [0, 5, 0] },
+  /* 6 CONNECT */     { pos: [0, 0, -120],   look: [0, 0, -180] },
 ];
 
 /* ===================================================================
-   13. SCROLL + DRAG + CAMERA STATE
+   SCROLL + DRAG STATE
    =================================================================== */
 const state = {
-  scroll: 0,           /* 0..1 */
-  targetScroll: 0,
-  dragRotX: 0,         /* additional rotation offset (from drag) */
-  dragRotY: 0,
-  targetDragX: 0,
-  targetDragY: 0,
-  mouseX: 0,           /* parallax */
-  mouseY: 0,
-  targetMouseX: 0,
-  targetMouseY: 0,
-  velX: 0,             /* drag momentum */
-  velY: 0,
-  isDragging: false,
-  freeMode: false,
-  lastInteract: performance.now(),
+  scroll: 0, targetScroll: 0,
+  dragX: 0, dragY: 0, targetDragX: 0, targetDragY: 0,
+  velX: 0, velY: 0,
+  mouseX: 0, mouseY: 0, targetMouseX: 0, targetMouseY: 0,
+  isDragging: false, freeMode: false,
 };
 
 const stages = document.querySelectorAll('.stage');
 const railItems = document.querySelectorAll('.rail-item');
-const scrollPrompt = document.getElementById('scrollPrompt');
-const SCROLL_LENGTH = () => document.body.scrollHeight - window.innerHeight;
+const scrollHint = document.getElementById('scrollHint');
+const SCROLL_LEN = () => document.body.scrollHeight - window.innerHeight;
 
 window.addEventListener('scroll', () => {
-  const len = SCROLL_LENGTH();
+  const len = SCROLL_LEN();
   state.targetScroll = len > 0 ? window.scrollY / len : 0;
-  state.lastInteract = performance.now();
-  if (window.scrollY > 50) scrollPrompt.classList.add('hide');
+  if (window.scrollY > 80) scrollHint.classList.add('hide');
 }, { passive: true });
 
-/* Drag rotation */
-let dragStart = { x: 0, y: 0 };
-let lastDrag = { x: 0, y: 0 };
-
-canvas.addEventListener('pointerdown', (e) => {
-  if (state.freeMode) return;
-  state.isDragging = true;
-  dragStart.x = e.clientX; dragStart.y = e.clientY;
-  lastDrag.x = e.clientX; lastDrag.y = e.clientY;
-  state.velX = 0; state.velY = 0;
-  document.querySelector('.cursor').classList.add('grabbing');
-});
-
-canvas.addEventListener('pointermove', (e) => {
-  /* parallax always */
-  state.targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-  state.targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-
-  if (state.isDragging) {
-    const dx = e.clientX - lastDrag.x;
-    const dy = e.clientY - lastDrag.y;
-    state.targetDragX += dx * 0.005;
-    state.targetDragY += dy * 0.005;
-    /* clamp vertical */
-    state.targetDragY = Math.max(-1.2, Math.min(1.2, state.targetDragY));
-    state.velX = dx * 0.005;
-    state.velY = dy * 0.005;
-    lastDrag.x = e.clientX; lastDrag.y = e.clientY;
-  }
-});
-
-window.addEventListener('pointerup', () => {
-  state.isDragging = false;
-  document.querySelector('.cursor').classList.remove('grabbing');
-});
-
-/* Reset drag rotation when starting to scroll again */
-let scrollDebounce;
-window.addEventListener('scroll', () => {
-  clearTimeout(scrollDebounce);
-  scrollDebounce = setTimeout(() => {
-    if (!state.isDragging) {
-      /* gently relax drag back to 0 */
-      state.targetDragX *= 0.7;
-      state.targetDragY *= 0.7;
+/* Drag rotation (desktop only; mobile keeps scroll) */
+if (!isMobile) {
+  let lastX = 0, lastY = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (state.freeMode) return;
+    state.isDragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    state.velX = state.velY = 0;
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    state.targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    state.targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    if (state.isDragging) {
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      state.targetDragX += dx * 0.005;
+      state.targetDragY += dy * 0.005;
+      state.targetDragY = Math.max(-1.1, Math.min(1.1, state.targetDragY));
+      state.velX = dx * 0.005;
+      state.velY = dy * 0.005;
+      lastX = e.clientX; lastY = e.clientY;
     }
-  }, 1500);
-}, { passive: true });
-
-/* Touch hint cursor */
-canvas.addEventListener('pointerenter', () => {
-  if (!state.isDragging) document.querySelector('.cursor').classList.add('grab');
-});
-canvas.addEventListener('pointerleave', () => {
-  document.querySelector('.cursor').classList.remove('grab');
-});
-
-/* ===================================================================
-   14. CUBIC INTERPOLATION ALONG WAYPOINTS
-   =================================================================== */
-function smoothstep(t) { return t * t * (3 - 2 * t); }
-
-function getWaypoint(progress) {
-  const n = waypoints.length - 1;
-  const scaled = Math.max(0, Math.min(0.9999, progress)) * n;
-  const idx = Math.floor(scaled);
-  const t = smoothstep(scaled - idx);
-  const a = waypoints[idx];
-  const b = waypoints[idx + 1] || a;
-  return {
-    pos: [
-      a.pos[0] + (b.pos[0] - a.pos[0]) * t,
-      a.pos[1] + (b.pos[1] - a.pos[1]) * t,
-      a.pos[2] + (b.pos[2] - a.pos[2]) * t,
-    ],
-    look: [
-      a.look[0] + (b.look[0] - a.look[0]) * t,
-      a.look[1] + (b.look[1] - a.look[1]) * t,
-      a.look[2] + (b.look[2] - a.look[2]) * t,
-    ],
-    stageIdx: idx,
-    fraction: scaled - idx,
-  };
+  });
+  window.addEventListener('pointerup', () => { state.isDragging = false; });
 }
 
-/* ===================================================================
-   15. ORBIT CONTROLS (free mode)
-   =================================================================== */
+/* Drag-rotation relax when scrolling */
+let relaxTimer;
+window.addEventListener('scroll', () => {
+  clearTimeout(relaxTimer);
+  relaxTimer = setTimeout(() => {
+    if (!state.isDragging) {
+      state.targetDragX *= 0.6;
+      state.targetDragY *= 0.6;
+    }
+  }, 1400);
+}, { passive: true });
+
+/* Rail jumps */
+railItems.forEach((el, i) => {
+  el.addEventListener('click', () => {
+    const n = waypoints.length - 1;
+    window.scrollTo({ top: (i / n) * SCROLL_LEN(), behavior: 'smooth' });
+  });
+});
+
+/* Free-explore toggle */
 let orbit = null;
 const btnExplore = document.getElementById('btnExplore');
 const btnReset = document.getElementById('btnReset');
-const hint = document.querySelector('.hint');
-
-btnExplore.addEventListener('click', () => {
-  state.freeMode = !state.freeMode;
-  if (state.freeMode) {
-    document.body.classList.add('free-mode');
-    btnExplore.classList.add('active');
-    btnExplore.textContent = '✕ Exit Explore';
-    if (!orbit) {
-      orbit = new THREE.OrbitControls(camera, canvas);
-      orbit.enableDamping = true;
-      orbit.dampingFactor = 0.08;
-      orbit.minDistance = 18;
-      orbit.maxDistance = 350;
-      orbit.zoomSpeed = 0.8;
-      orbit.rotateSpeed = 0.7;
-      orbit.target.set(0, 0, 0);
+if (btnExplore) {
+  btnExplore.addEventListener('click', () => {
+    state.freeMode = !state.freeMode;
+    if (state.freeMode) {
+      document.body.classList.add('free-mode');
+      btnExplore.classList.add('active');
+      btnExplore.textContent = '✕ Exit';
+      if (!orbit) {
+        orbit = new THREE.OrbitControls(camera, canvas);
+        orbit.enableDamping = true;
+        orbit.dampingFactor = 0.08;
+        orbit.minDistance = 15;
+        orbit.maxDistance = 380;
+        orbit.target.set(0, 0, 0);
+      }
+      orbit.enabled = true;
+    } else {
+      document.body.classList.remove('free-mode');
+      btnExplore.classList.remove('active');
+      btnExplore.textContent = '⌖ Free Explore';
+      if (orbit) orbit.enabled = false;
     }
-    orbit.enabled = true;
-  } else {
-    document.body.classList.remove('free-mode');
-    btnExplore.classList.remove('active');
-    btnExplore.textContent = '⌖ Free Explore';
-    if (orbit) orbit.enabled = false;
-  }
-});
-
+  });
+}
 btnReset.addEventListener('click', () => {
-  if (state.freeMode) {
+  if (state.freeMode && orbit) {
     orbit.target.set(0, 0, 0);
-    camera.position.set(0, 6, 130);
+    camera.position.set(0, 8, 200);
     orbit.update();
   } else {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1302,189 +1606,36 @@ btnReset.addEventListener('click', () => {
   }
 });
 
-/* Rail click navigation */
-railItems.forEach((el, i) => {
-  el.addEventListener('click', () => {
-    const n = waypoints.length - 1;
-    const target = (i / n) * SCROLL_LENGTH();
-    window.scrollTo({ top: target, behavior: 'smooth' });
-  });
-});
-
-/* ===================================================================
-   16. STAGE FADE LOGIC
-   =================================================================== */
-function updateStages(progress) {
+/* Stage fade logic */
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+function getWaypoint(p) {
   const n = waypoints.length - 1;
-  const scaled = progress * n;
-  const idx = Math.max(0, Math.min(n, Math.round(scaled)));
+  const sc = Math.max(0, Math.min(0.9999, p)) * n;
+  const i = Math.floor(sc);
+  const t = smoothstep(sc - i);
+  const a = waypoints[i], b = waypoints[i+1] || a;
+  return {
+    pos: [
+      a.pos[0] + (b.pos[0]-a.pos[0]) * t,
+      a.pos[1] + (b.pos[1]-a.pos[1]) * t,
+      a.pos[2] + (b.pos[2]-a.pos[2]) * t,
+    ],
+    look: [
+      a.look[0] + (b.look[0]-a.look[0]) * t,
+      a.look[1] + (b.look[1]-a.look[1]) * t,
+      a.look[2] + (b.look[2]-a.look[2]) * t,
+    ],
+  };
+}
+function updateStages(p) {
+  const n = waypoints.length - 1;
+  const idx = Math.max(0, Math.min(n, Math.round(p * n)));
   stages.forEach((s, i) => s.classList.toggle('active', i === idx));
   railItems.forEach((r, i) => r.classList.toggle('active', i === idx));
 }
 
 /* ===================================================================
-   17. ANIMATION LOOP
-   =================================================================== */
-const clock = new THREE.Clock();
-let fpsAccum = 0, fpsCount = 0, fpsLast = performance.now();
-
-const tmpVec = new THREE.Vector3();
-const tmpLook = new THREE.Vector3();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  const dt = clock.getDelta();
-
-  /* === SCROLL SMOOTHING === */
-  state.scroll += (state.targetScroll - state.scroll) * 0.08;
-
-  /* === DRAG MOMENTUM === */
-  if (!state.isDragging) {
-    state.targetDragX += state.velX;
-    state.targetDragY += state.velY;
-    state.velX *= 0.93;
-    state.velY *= 0.93;
-    state.targetDragY = Math.max(-1.2, Math.min(1.2, state.targetDragY));
-    if (Math.abs(state.velX) < 0.0001) state.velX = 0;
-    if (Math.abs(state.velY) < 0.0001) state.velY = 0;
-  }
-  state.dragRotX += (state.targetDragX - state.dragRotX) * 0.1;
-  state.dragRotY += (state.targetDragY - state.dragRotY) * 0.1;
-  state.mouseX += (state.targetMouseX - state.mouseX) * 0.05;
-  state.mouseY += (state.targetMouseY - state.mouseY) * 0.05;
-
-  /* === CAMERA UPDATE === */
-  if (!state.freeMode) {
-    const wp = getWaypoint(state.scroll);
-
-    /* base position + look-at */
-    tmpVec.set(wp.pos[0], wp.pos[1], wp.pos[2]);
-    tmpLook.set(wp.look[0], wp.look[1], wp.look[2]);
-
-    /* apply drag rotation as orbit around look-at target */
-    const offset = tmpVec.clone().sub(tmpLook);
-    const dist = offset.length();
-
-    /* spherical coordinates */
-    let yaw = Math.atan2(offset.x, offset.z);
-    let pitch = Math.asin(offset.y / dist);
-    yaw += state.dragRotX + state.mouseX * 0.05;
-    pitch += state.dragRotY + state.mouseY * 0.03;
-    pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
-
-    /* back to cartesian */
-    offset.x = dist * Math.cos(pitch) * Math.sin(yaw);
-    offset.y = dist * Math.sin(pitch);
-    offset.z = dist * Math.cos(pitch) * Math.cos(yaw);
-
-    camera.position.copy(tmpLook).add(offset);
-    camera.lookAt(tmpLook);
-    updateStages(state.scroll);
-  } else if (orbit) {
-    orbit.update();
-  }
-
-  /* === CORE ANIMATION === */
-  coreInner.rotation.x = t * 0.4;
-  coreInner.rotation.y = t * 0.55;
-  coreInner.material.emissiveIntensity = 1.0 + Math.sin(t * 2) * 0.6;
-  coreMid.rotation.x = -t * 0.25;
-  coreMid.rotation.z = t * 0.3;
-  coreOuter.rotation.x = t * 0.15;
-  coreOuter.rotation.y = -t * 0.2;
-  coreCage.rotation.x = -t * 0.1;
-  coreCage.rotation.y = t * 0.12;
-
-  /* breathing scale */
-  const breath = 1 + Math.sin(t * 1.2) * 0.04;
-  core.scale.setScalar(breath);
-
-  /* === RINGS === */
-  rings.forEach((ring, i) => {
-    ring.rotation.y += dt * (0.2 + i * 0.1);
-  });
-
-  /* === ORBITAL NODES === */
-  orbitNodes.forEach((n) => {
-    n.angle += n.speed * (1 + Math.sin(t * 0.5 + n.ringIdx) * 0.2);
-    const cfg = n.cfg;
-    const local = new THREE.Vector3(
-      Math.cos(n.angle) * cfg.r,
-      0,
-      Math.sin(n.angle) * cfg.r
-    );
-    local.applyEuler(new THREE.Euler(cfg.rot[0], cfg.rot[1], cfg.rot[2]));
-    n.mesh.position.copy(local);
-    n.mesh.material.emissiveIntensity = 0.8 + Math.sin(t * 3 + n.angle) * 0.5;
-  });
-
-  /* === PILLARS (gentle float) === */
-  pillar1.rotation.y = t * 0.15;
-  pillar2.rotation.y = -t * 0.18;
-  pillars.position.y = -10 + Math.sin(t * 0.4) * 1.5;
-
-  /* === STATS (float and pulse) === */
-  statsMonoliths.forEach((m, i) => {
-    m.slab.rotation.y = Math.sin(t * 0.3 + i) * 0.15;
-    m.wire.rotation.y = m.slab.rotation.y;
-    m.slab.position.y = m.basePos[1] + Math.sin(t * 0.6 + i * 1.5) * 0.8;
-    m.wire.position.y = m.slab.position.y;
-    m.slab.material.emissiveIntensity = 0.7 + Math.sin(t * 2 + i) * 0.3;
-  });
-  statsGroup.rotation.y = Math.sin(t * 0.1) * 0.1;
-
-  /* === PORTAL === */
-  portal.rotation.z = t * 0.1;
-  portalRing.rotation.x = Math.PI/2;
-  portalRing.rotation.z = t * 0.5;
-  portalWire.rotation.z = -t * 0.3;
-  portalCore.scale.setScalar(1 + Math.sin(t * 3) * 0.15);
-  portalCore.material.emissiveIntensity = 1.8 + Math.sin(t * 4) * 0.5;
-
-  /* === STARS slow rotation === */
-  stars.rotation.y = t * 0.005;
-  stars.rotation.x = t * 0.003;
-
-  /* === PARTICLE FIELD === */
-  const pp = particles.geometry.attributes.position.array;
-  const bases = particles.userData.bases;
-  for (let i = 0; i < bases.length; i++) {
-    const b = bases[i];
-    pp[i*3]   = b.x + Math.sin(t * 0.3 + i * 0.05) * 1.5;
-    pp[i*3+1] = b.y + Math.cos(t * 0.4 + i * 0.07) * 1.5;
-    pp[i*3+2] = b.z + Math.sin(t * 0.2 + i * 0.04) * 1.5;
-  }
-  particles.geometry.attributes.position.needsUpdate = true;
-
-  /* === STREAMS pulse === */
-  streamMat.opacity = 0.2 + Math.abs(Math.sin(t * 2)) * 0.25;
-  streams.rotation.y = t * 0.08;
-  streams.rotation.x = t * 0.05;
-
-  /* === LIGHTS pulse slightly === */
-  keyLight.intensity = 2.2 + Math.sin(t * 0.8) * 0.4;
-  rimLight.intensity = 1.4 + Math.cos(t * 0.6) * 0.3;
-
-  /* === RENDER === */
-  renderer.render(scene, camera);
-
-  /* === TELEMETRY === */
-  fpsCount++;
-  const now = performance.now();
-  if (now - fpsLast > 500) {
-    const fps = Math.round((fpsCount * 1000) / (now - fpsLast));
-    document.getElementById('telFps').textContent = fps;
-    document.getElementById('telCamX').textContent = (camera.position.x >= 0 ? '+' : '') + camera.position.x.toFixed(1);
-    document.getElementById('telCamY').textContent = (camera.position.y >= 0 ? '+' : '') + camera.position.y.toFixed(1);
-    document.getElementById('telCamZ').textContent = (camera.position.z >= 0 ? '+' : '') + camera.position.z.toFixed(1);
-    fpsCount = 0;
-    fpsLast = now;
-  }
-}
-
-/* ===================================================================
-   18. RESIZE HANDLER
+   RESIZE
    =================================================================== */
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1493,37 +1644,164 @@ window.addEventListener('resize', () => {
 });
 
 /* ===================================================================
-   19. CUSTOM CURSOR
+   ANIMATION LOOP
    =================================================================== */
-if (!isMobile) {
-  const cursor = document.querySelector('.cursor');
-  const dot = document.querySelector('.cursor-dot');
-  let mx = 0, my = 0, cx = 0, cy = 0;
-  window.addEventListener('pointermove', e => {
-    mx = e.clientX; my = e.clientY;
-    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
-  });
-  (function loop() {
-    cx += (mx - cx) * 0.18;
-    cy += (my - cy) * 0.18;
-    cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%,-50%)`;
-    requestAnimationFrame(loop);
-  })();
-  document.querySelectorAll('a, button, .ctrl-btn, .rail-item').forEach(el => {
-    el.addEventListener('mouseenter', () => cursor.classList.add('grab'));
-    el.addEventListener('mouseleave', () => cursor.classList.remove('grab'));
-  });
-}
+const clock = new THREE.Clock();
+const tmpVec = new THREE.Vector3();
+const tmpLook = new THREE.Vector3();
+let fpsCount = 0, fpsLast = performance.now();
 
-/* ===================================================================
-   20. KICKOFF
-   =================================================================== */
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+
+  /* Smooth scroll */
+  state.scroll += (state.targetScroll - state.scroll) * 0.1;
+
+  /* Drag momentum */
+  if (!state.isDragging) {
+    state.targetDragX += state.velX;
+    state.targetDragY += state.velY;
+    state.velX *= 0.93;
+    state.velY *= 0.93;
+    state.targetDragY = Math.max(-1.1, Math.min(1.1, state.targetDragY));
+    if (Math.abs(state.velX) < 0.0002) state.velX = 0;
+    if (Math.abs(state.velY) < 0.0002) state.velY = 0;
+  }
+  state.dragX += (state.targetDragX - state.dragX) * 0.1;
+  state.dragY += (state.targetDragY - state.dragY) * 0.1;
+  state.mouseX += (state.targetMouseX - state.mouseX) * 0.06;
+  state.mouseY += (state.targetMouseY - state.mouseY) * 0.06;
+
+  /* Camera */
+  if (!state.freeMode) {
+    const wp = getWaypoint(state.scroll);
+    tmpVec.set(wp.pos[0], wp.pos[1], wp.pos[2]);
+    tmpLook.set(wp.look[0], wp.look[1], wp.look[2]);
+    const offset = tmpVec.clone().sub(tmpLook);
+    const dist = offset.length();
+    let yaw = Math.atan2(offset.x, offset.z);
+    let pitch = Math.asin(offset.y / dist);
+    yaw += state.dragX + state.mouseX * 0.04;
+    pitch += state.dragY + state.mouseY * 0.025;
+    pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
+    offset.x = dist * Math.cos(pitch) * Math.sin(yaw);
+    offset.y = dist * Math.sin(pitch);
+    offset.z = dist * Math.cos(pitch) * Math.cos(yaw);
+    camera.position.copy(tmpLook).add(offset);
+    camera.lookAt(tmpLook);
+    updateStages(state.scroll);
+  } else if (orbit) {
+    orbit.update();
+  }
+
+  /* Core */
+  coreCenter.rotation.x = t * 0.5;
+  coreCenter.rotation.y = t * 0.65;
+  /* iridescent: color cycles through palette */
+  const colorIdx = (Math.sin(t * 0.4) * 0.5 + 0.5) * (PALETTE.length - 1);
+  const a = Math.floor(colorIdx);
+  const b = Math.min(a + 1, PALETTE.length - 1);
+  const f = colorIdx - a;
+  const cA = new THREE.Color(PALETTE[a]);
+  const cB = new THREE.Color(PALETTE[b]);
+  const cur = cA.lerp(cB, f);
+  coreCenter.material.emissive = cur;
+  coreCenter.material.emissiveIntensity = 1.4 + Math.sin(t * 2) * 0.6;
+  coreMid.rotation.x = -t * 0.3;
+  coreMid.rotation.z = t * 0.35;
+  coreShell.rotation.x = t * 0.15;
+  coreShell.rotation.y = -t * 0.2;
+  coreCage.rotation.x = -t * 0.1;
+  coreCage.rotation.y = t * 0.13;
+  core.scale.setScalar(1 + Math.sin(t * 1.1) * 0.04);
+
+  /* Rings */
+  rings.forEach((r, i) => {
+    r.rotation.y += dt * (0.2 + i * 0.08);
+  });
+
+  /* Orbital nodes */
+  nodes.forEach((n) => {
+    n.angle += n.speed * (1 + Math.sin(t * 0.4 + n.ringIdx) * 0.2);
+    const cfg = n.cfg;
+    const local = new THREE.Vector3(Math.cos(n.angle) * cfg.r, 0, Math.sin(n.angle) * cfg.r);
+    local.applyEuler(new THREE.Euler(cfg.rot[0], cfg.rot[1], cfg.rot[2]));
+    n.mesh.position.copy(local);
+    n.mesh.material.emissiveIntensity = 0.9 + Math.sin(t * 3 + n.angle) * 0.5;
+  });
+
+  /* Floating shapes */
+  shapes.forEach((s) => {
+    const u = s.userData;
+    s.rotation.x += u.rotSpeed[0];
+    s.rotation.y += u.rotSpeed[1];
+    s.rotation.z += u.rotSpeed[2];
+    s.position.x = u.basePos[0] + Math.sin(t * u.floatSpeed + u.phase) * u.floatAmp;
+    s.position.y = u.basePos[1] + Math.cos(t * u.floatSpeed * 0.7 + u.phase) * u.floatAmp;
+    s.position.z = u.basePos[2] + Math.sin(t * u.floatSpeed * 0.5 + u.phase) * u.floatAmp;
+    u.solid.material.emissiveIntensity = 0.5 + Math.sin(t * 1.5 + u.phase) * 0.3;
+  });
+
+  /* Streams */
+  streamMat.opacity = 0.35 + Math.abs(Math.sin(t * 1.8)) * 0.3;
+  streams.rotation.y = t * 0.08;
+  streams.rotation.x = t * 0.05;
+
+  /* Portal */
+  portal.rotation.z = t * 0.12;
+  portalRing.rotation.z = t * 0.5;
+  portalRing.rotation.x = Math.PI/2;
+  portalRing2.rotation.z = -t * 0.4;
+  portalCore.scale.setScalar(1 + Math.sin(t * 3) * 0.18);
+  portalCore.material.emissiveIntensity = 2.0 + Math.sin(t * 4) * 0.6;
+
+  /* Stars */
+  stars.rotation.y = t * 0.006;
+  stars.rotation.x = t * 0.004;
+
+  /* Particles drift */
+  const pp = particles.geometry.attributes.position.array;
+  const bases = particles.userData.bases;
+  for (let i = 0; i < bases.length; i++) {
+    const b = bases[i];
+    pp[i*3]   = b.x + Math.sin(t * 0.3 + i * 0.04) * 1.5;
+    pp[i*3+1] = b.y + Math.cos(t * 0.4 + i * 0.05) * 1.5;
+    pp[i*3+2] = b.z + Math.sin(t * 0.2 + i * 0.03) * 1.5;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  /* Lights orbit slowly for shifting color */
+  lights.cyan.position.x = Math.sin(t * 0.3) * 70;
+  lights.cyan.position.z = Math.cos(t * 0.3) * 70;
+  lights.magenta.position.x = Math.sin(t * 0.4 + Math.PI) * 60;
+  lights.magenta.position.y = Math.cos(t * 0.4) * 40;
+  lights.lavender.position.z = Math.sin(t * 0.25) * 90 - 30;
+  lights.gold.position.y = Math.sin(t * 0.35) * 60;
+
+  renderer.render(scene, camera);
+
+  /* Telemetry */
+  fpsCount++;
+  const now = performance.now();
+  if (now - fpsLast > 600) {
+    const fps = Math.round((fpsCount * 1000) / (now - fpsLast));
+    document.getElementById('telFps').textContent = fps;
+    const xEl = document.getElementById('telCamX');
+    const zEl = document.getElementById('telCamZ');
+    if (xEl) xEl.textContent = (camera.position.x >= 0 ? '+' : '') + camera.position.x.toFixed(0);
+    if (zEl) zEl.textContent = (camera.position.z >= 0 ? '+' : '') + camera.position.z.toFixed(0);
+    fpsCount = 0;
+    fpsLast = now;
+  }
+}
 animate();
 
-/* Hide loader once first frame rendered */
+/* Hide loader */
 setTimeout(() => {
   document.getElementById('loader').classList.add('done');
-}, 1800);
+}, 1900);
 
 })();
 </script>
