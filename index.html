@@ -375,20 +375,39 @@
   .stage {
     position: absolute;
     max-width: 640px;
-    max-height: calc(100vh - 220px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;
+    max-height: calc(100vh - 160px);
+    overflow: visible; /* hover glows/shadows render fully, never clipped */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
     opacity: 0;
     transform: translateY(50px);
     transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
-    pointer-events: none;
+    pointer-events: none; /* empty areas stay draggable */
   }
-  .stage::-webkit-scrollbar { display: none; }
+  .stage::-webkit-scrollbar { width: 5px; }
+  .stage::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 5px; }
   .stage.active {
     opacity: 1;
     transform: translateY(0);
+  }
+  /* links/buttons + data elements are interactive (so hover works);
+     the rest of the stage stays transparent to pointers so the 3D
+     scene is still draggable through the empty gaps */
+  .stage.active a,
+  .stage.active button,
+  .stage.active .cap-card,
+  .stage.active .stat-card,
+  .stage.active .pill,
+  .stage.active .proof-box,
+  .stage.active .meta-row > div { pointer-events: auto; }
+  /* only stages that overflow get a scrollbar; padding gives hover
+     shadows room so they aren't clipped by the scroll container */
+  .stage.scrollable.active {
+    overflow-y: auto;
+    overflow-x: hidden;
     pointer-events: auto;
+    padding: 14px 20px;
+    margin: -14px -20px;
   }
 
   .stage[data-pos="left"] { left: 64px; }
@@ -501,7 +520,9 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--text-faint);
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), color 0.3s;
   }
+  .meta-row > div:hover { transform: translateY(-3px); color: var(--cyan); }
   .meta-row > div strong {
     display: block;
     font-family: 'Fraunces', serif;
@@ -511,6 +532,13 @@
     letter-spacing: -0.02em;
     color: var(--text);
     margin-top: 6px;
+    transition: color 0.3s;
+  }
+  .meta-row > div:hover strong {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   /* Stack pills (colorful) */
@@ -530,28 +558,35 @@
     color: var(--text-dim);
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(12px);
-    transition: all 0.25s;
+    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), background 0.25s, box-shadow 0.25s, color 0.25s;
     letter-spacing: 0.02em;
   }
-  .pill:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+  .pill:hover { transform: translateY(-2px) scale(1.04); background: rgba(255, 255, 255, 0.10); color: var(--text); }
   .pill.cyan    { background: rgba(0, 229, 255, 0.12);   border-color: rgba(0, 229, 255, 0.4);   color: var(--cyan); }
   .pill.magenta { background: rgba(255, 62, 197, 0.12);  border-color: rgba(255, 62, 197, 0.4);  color: var(--magenta); }
   .pill.lime    { background: rgba(194, 255, 62, 0.12);  border-color: rgba(194, 255, 62, 0.4);  color: var(--lime); }
   .pill.gold    { background: rgba(255, 210, 62, 0.12);  border-color: rgba(255, 210, 62, 0.4);  color: var(--gold); }
   .pill.lavender{ background: rgba(184, 94, 255, 0.14);  border-color: rgba(184, 94, 255, 0.4);  color: var(--lavender); }
   .pill.coral   { background: rgba(255, 110, 61, 0.12);  border-color: rgba(255, 110, 61, 0.4);  color: var(--coral); }
+  .pill.cyan:hover    { box-shadow: 0 6px 20px rgba(0,229,255,0.35); }
+  .pill.magenta:hover { box-shadow: 0 6px 20px rgba(255,62,197,0.35); }
+  .pill.lime:hover    { box-shadow: 0 6px 20px rgba(194,255,62,0.35); }
+  .pill.gold:hover    { box-shadow: 0 6px 20px rgba(255,210,62,0.35); }
+  .pill.lavender:hover{ box-shadow: 0 6px 20px rgba(184,94,255,0.35); }
+  .pill.coral:hover   { box-shadow: 0 6px 20px rgba(255,110,61,0.35); }
 
-  /* Capability cards */
+  /* Capability cards — 3 columns, compact, fits one screen */
   .cap-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    margin-top: 24px;
-    max-width: 580px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 22px;
+    max-width: 720px;
   }
+  .stage[data-stage="3"] { max-width: 760px; }
   .stage[data-pos="right"] .cap-grid { margin-left: auto; }
   .cap-card {
-    padding: 18px;
+    padding: 15px;
     border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(13, 10, 38, 0.55);
@@ -560,9 +595,9 @@
   }
   .cap-card .icon {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.2em;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     text-transform: uppercase;
   }
   .cap-card:nth-child(1) .icon { color: var(--cyan); }
@@ -574,18 +609,37 @@
   .cap-card h4 {
     font-family: 'Fraunces', serif;
     font-weight: 400;
-    font-size: 17px;
+    font-size: 16px;
     color: var(--text);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     letter-spacing: -0.01em;
+    line-height: 1.15;
   }
   .cap-card p {
-    font-size: 12px;
-    line-height: 1.55;
+    font-size: 11.5px;
+    line-height: 1.5;
     color: var(--text-dim);
     margin: 0;
     max-width: none;
   }
+  /* hover: lift, brighten, glow in the card's own accent color */
+  .cap-card {
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1),
+                border-color 0.3s, background 0.3s, box-shadow 0.3s;
+    will-change: transform;
+  }
+  .cap-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .cap-card:hover h4 { color: #fff; }
+  .cap-card:hover p { color: var(--text); }
+  .cap-card:nth-child(1):hover { border-color: var(--cyan);     box-shadow: 0 8px 26px rgba(0,229,255,0.25); }
+  .cap-card:nth-child(2):hover { border-color: var(--magenta);  box-shadow: 0 8px 26px rgba(255,62,197,0.25); }
+  .cap-card:nth-child(3):hover { border-color: var(--lime);     box-shadow: 0 8px 26px rgba(194,255,62,0.25); }
+  .cap-card:nth-child(4):hover { border-color: var(--gold);     box-shadow: 0 8px 26px rgba(255,210,62,0.25); }
+  .cap-card:nth-child(5):hover { border-color: var(--lavender); box-shadow: 0 8px 26px rgba(184,94,255,0.25); }
+  .cap-card:nth-child(6):hover { border-color: var(--coral);    box-shadow: 0 8px 26px rgba(255,110,61,0.25); }
 
   /* Stats */
   .stats-grid {
@@ -612,7 +666,17 @@
     background: var(--card-glow);
     opacity: 0.5;
     z-index: 0;
+    transition: opacity 0.4s;
   }
+  .stat-card {
+    transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), border-color 0.35s, box-shadow 0.35s;
+  }
+  .stat-card:hover { transform: translateY(-6px); }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-card:nth-child(1):hover { border-color: var(--cyan);    box-shadow: 0 12px 38px rgba(0,229,255,0.3); }
+  .stat-card:nth-child(2):hover { border-color: var(--magenta); box-shadow: 0 12px 38px rgba(255,62,197,0.3); }
+  .stat-card:nth-child(3):hover { border-color: var(--lime);    box-shadow: 0 12px 38px rgba(194,255,62,0.3); }
+  .stat-card:nth-child(4):hover { border-color: var(--gold);    box-shadow: 0 12px 38px rgba(255,210,62,0.3); }
   .stat-card:nth-child(1) { --card-glow: radial-gradient(circle at top right, rgba(0,229,255,0.18), transparent 70%); }
   .stat-card:nth-child(2) { --card-glow: radial-gradient(circle at top right, rgba(255,62,197,0.18), transparent 70%); }
   .stat-card:nth-child(3) { --card-glow: radial-gradient(circle at top right, rgba(194,255,62,0.18), transparent 70%); }
@@ -652,6 +716,11 @@
     max-width: 580px;
     position: relative;
     overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s;
+  }
+  .proof-box:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 36px rgba(184, 94, 255, 0.22), 0 0 20px rgba(0, 229, 255, 0.16);
   }
   .stage[data-pos="right"] .proof-box { margin-left: auto; }
   .proof-box::before {
@@ -811,8 +880,16 @@
       left: 22px !important;
       right: auto !important;
       text-align: left !important;
-      top: 90px;
+      top: 84px;
+      max-height: calc(100vh - 170px);
     }
+    .stage[data-stage="3"] { max-width: 100%; }
+    /* on mobile, the Craft card grid is 2 compact columns */
+    .cap-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 9px; max-width: 100%; margin-top: 16px; }
+    .cap-card { padding: 12px; }
+    .cap-card h4 { font-size: 14px; }
+    .cap-card p { font-size: 11px; line-height: 1.45; }
+    .cap-card .icon { font-size: 9px; margin-bottom: 6px; }
     .stage[data-pos="center"] {
       transform: translateY(50px);
     }
@@ -843,11 +920,6 @@
 
     .meta-row { gap: 22px; margin-top: 22px; }
     .meta-row > div strong { font-size: 18px; }
-
-    .cap-grid { grid-template-columns: 1fr; gap: 10px; max-width: 100%; }
-    .cap-card { padding: 14px; }
-    .cap-card h4 { font-size: 15px; }
-    .cap-card p { font-size: 11.5px; }
 
     .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 100%; }
     .stat-card { padding: 16px; }
@@ -1163,9 +1235,16 @@ function initStarCursor() {
   let mx = -100, my = -100;
   window.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; });
 
+  /* burst the stars when hovering interactive data */
+  let hoverScale = 1, targetHoverScale = 1;
+  document.addEventListener('pointerover', (e) => {
+    targetHoverScale = e.target.closest('.cap-card, .stat-card, .pill, .proof-box, a, button, .meta-row > div') ? 1.35 : 1;
+  });
+
   let rotation = 0;
   function tick() {
     rotation += 0.6;
+    hoverScale += (targetHoverScale - hoverScale) * 0.15;
     /* first star follows mouse, each subsequent star follows previous */
     stars[0].tx = mx; stars[0].ty = my;
     for (let i = 1; i < stars.length; i++) {
@@ -1177,7 +1256,7 @@ function initStarCursor() {
       s.x += (s.tx - s.x) * s.lerp;
       s.y += (s.ty - s.y) * s.lerp;
       const r = rotation - i * 8;
-      s.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -50%) rotate(${r}deg)`;
+      s.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -50%) rotate(${r}deg) scale(${hoverScale.toFixed(3)})`;
     }
     requestAnimationFrame(tick);
   }
@@ -1193,7 +1272,7 @@ const renderer = new THREE.WebGLRenderer({
   canvas, antialias: !isMobile, alpha: false,
   powerPreference: 'high-performance',
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 1.75));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(C.ink, 1);
 
@@ -1534,30 +1613,43 @@ window.addEventListener('scroll', () => {
   if (window.scrollY > 80) scrollHint.classList.add('hide');
 }, { passive: true });
 
-/* Drag rotation (desktop only; mobile keeps scroll) */
+/* Drag rotation (desktop only; mobile keeps scroll).
+   Listen on window so the whole screen is draggable — the text stages
+   used to sit on top of the canvas and block dragging. We just skip
+   drags that start on an actual control (button / link). */
 if (!isMobile) {
   let lastX = 0, lastY = 0;
-  canvas.addEventListener('pointerdown', (e) => {
-    if (state.freeMode) return;
-    state.isDragging = true;
-    lastX = e.clientX; lastY = e.clientY;
-    state.velX = state.velY = 0;
-  });
-  canvas.addEventListener('pointermove', (e) => {
+
+  const isInteractive = (el) => {
+    return el && el.closest && el.closest('a, button, .ctrl-btn, .rail-item, .cta, .contact-links');
+  };
+
+  window.addEventListener('pointermove', (e) => {
     state.targetMouseX = (e.clientX / window.innerWidth - 0.5) * 2;
     state.targetMouseY = (e.clientY / window.innerHeight - 0.5) * 2;
     if (state.isDragging) {
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
-      state.targetDragX += dx * 0.005;
-      state.targetDragY += dy * 0.005;
+      state.targetDragX += dx * 0.006;
+      state.targetDragY += dy * 0.006;
       state.targetDragY = Math.max(-1.1, Math.min(1.1, state.targetDragY));
-      state.velX = dx * 0.005;
-      state.velY = dy * 0.005;
+      state.velX = dx * 0.006;
+      state.velY = dy * 0.006;
       lastX = e.clientX; lastY = e.clientY;
     }
   });
+
+  window.addEventListener('pointerdown', (e) => {
+    if (state.freeMode) return;
+    if (isInteractive(e.target)) return;   // let buttons/links work normally
+    state.isDragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    state.velX = state.velY = 0;
+    document.body.style.cursor = 'none';
+  });
+
   window.addEventListener('pointerup', () => { state.isDragging = false; });
+  window.addEventListener('pointercancel', () => { state.isDragging = false; });
 }
 
 /* Drag-rotation relax when scrolling */
@@ -1641,11 +1733,36 @@ function getWaypoint(p) {
     ],
   };
 }
+function markScrollableStages() {
+  stages.forEach(s => {
+    /* temporarily ensure measurable */
+    const wasActive = s.classList.contains('active');
+    if (!wasActive) { s.style.visibility = 'hidden'; s.style.opacity = '0'; s.classList.add('active'); }
+    const overflowing = s.scrollHeight > s.clientHeight + 4;
+    s.classList.toggle('scrollable', overflowing);
+    if (!wasActive) { s.classList.remove('active'); s.style.visibility = ''; s.style.opacity = ''; }
+  });
+}
+
+let lastActiveIdx = -1;
 function updateStages(p) {
   const n = waypoints.length - 1;
   const idx = Math.max(0, Math.min(n, Math.round(p * n)));
-  stages.forEach((s, i) => s.classList.toggle('active', i === idx));
-  railItems.forEach((r, i) => r.classList.toggle('active', i === idx));
+  if (idx !== lastActiveIdx) {
+    stages.forEach((s, i) => {
+      const on = i === idx;
+      s.classList.toggle('active', on);
+      if (on) {
+        s.scrollTop = 0;
+        /* re-check overflow for the now-visible stage */
+        requestAnimationFrame(() => {
+          s.classList.toggle('scrollable', s.scrollHeight > s.clientHeight + 4);
+        });
+      }
+    });
+    railItems.forEach((r, i) => r.classList.toggle('active', i === idx));
+    lastActiveIdx = idx;
+  }
 }
 
 /* ===================================================================
@@ -1655,7 +1772,10 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  markScrollableStages();
 });
+window.addEventListener('load', markScrollableStages);
+setTimeout(markScrollableStages, 500);
 
 /* ===================================================================
    ANIMATION LOOP
@@ -1663,6 +1783,14 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 const tmpVec = new THREE.Vector3();
 const tmpLook = new THREE.Vector3();
+const _offset = new THREE.Vector3();
+const _nodeVec = new THREE.Vector3();
+const _colA = new THREE.Color();
+const _colB = new THREE.Color();
+/* precompute palette as THREE.Color objects (no per-frame allocation) */
+const PAL_COLORS = PALETTE.map(c => new THREE.Color(c));
+/* precompute each ring's Euler once */
+nodes.forEach(n => { n.euler = new THREE.Euler(n.cfg.rot[0], n.cfg.rot[1], n.cfg.rot[2]); });
 let fpsCount = 0, fpsLast = performance.now();
 
 function animate() {
@@ -1693,17 +1821,17 @@ function animate() {
     const wp = getWaypoint(state.scroll);
     tmpVec.set(wp.pos[0], wp.pos[1], wp.pos[2]);
     tmpLook.set(wp.look[0], wp.look[1], wp.look[2]);
-    const offset = tmpVec.clone().sub(tmpLook);
-    const dist = offset.length();
-    let yaw = Math.atan2(offset.x, offset.z);
-    let pitch = Math.asin(offset.y / dist);
+    _offset.copy(tmpVec).sub(tmpLook);
+    const dist = _offset.length();
+    let yaw = Math.atan2(_offset.x, _offset.z);
+    let pitch = Math.asin(_offset.y / dist);
     yaw += state.dragX + state.mouseX * 0.04;
     pitch += state.dragY + state.mouseY * 0.025;
     pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
-    offset.x = dist * Math.cos(pitch) * Math.sin(yaw);
-    offset.y = dist * Math.sin(pitch);
-    offset.z = dist * Math.cos(pitch) * Math.cos(yaw);
-    camera.position.copy(tmpLook).add(offset);
+    _offset.x = dist * Math.cos(pitch) * Math.sin(yaw);
+    _offset.y = dist * Math.sin(pitch);
+    _offset.z = dist * Math.cos(pitch) * Math.cos(yaw);
+    camera.position.copy(tmpLook).add(_offset);
     camera.lookAt(tmpLook);
     updateStages(state.scroll);
   } else if (orbit) {
@@ -1713,15 +1841,14 @@ function animate() {
   /* Core */
   coreCenter.rotation.x = t * 0.5;
   coreCenter.rotation.y = t * 0.65;
-  /* iridescent: color cycles through palette */
-  const colorIdx = (Math.sin(t * 0.4) * 0.5 + 0.5) * (PALETTE.length - 1);
+  /* iridescent: color cycles through palette (no per-frame allocation) */
+  const colorIdx = (Math.sin(t * 0.4) * 0.5 + 0.5) * (PAL_COLORS.length - 1);
   const a = Math.floor(colorIdx);
-  const b = Math.min(a + 1, PALETTE.length - 1);
+  const b = Math.min(a + 1, PAL_COLORS.length - 1);
   const f = colorIdx - a;
-  const cA = new THREE.Color(PALETTE[a]);
-  const cB = new THREE.Color(PALETTE[b]);
-  const cur = cA.lerp(cB, f);
-  coreCenter.material.emissive = cur;
+  _colA.copy(PAL_COLORS[a]);
+  _colB.copy(PAL_COLORS[b]);
+  coreCenter.material.emissive.copy(_colA).lerp(_colB, f);
   coreCenter.material.emissiveIntensity = 1.4 + Math.sin(t * 2) * 0.6;
   coreMid.rotation.x = -t * 0.3;
   coreMid.rotation.z = t * 0.35;
@@ -1740,9 +1867,9 @@ function animate() {
   nodes.forEach((n) => {
     n.angle += n.speed * (1 + Math.sin(t * 0.4 + n.ringIdx) * 0.2);
     const cfg = n.cfg;
-    const local = new THREE.Vector3(Math.cos(n.angle) * cfg.r, 0, Math.sin(n.angle) * cfg.r);
-    local.applyEuler(new THREE.Euler(cfg.rot[0], cfg.rot[1], cfg.rot[2]));
-    n.mesh.position.copy(local);
+    _nodeVec.set(Math.cos(n.angle) * cfg.r, 0, Math.sin(n.angle) * cfg.r);
+    _nodeVec.applyEuler(n.euler);
+    n.mesh.position.copy(_nodeVec);
     n.mesh.material.emissiveIntensity = 0.9 + Math.sin(t * 3 + n.angle) * 0.5;
   });
 
@@ -1775,16 +1902,10 @@ function animate() {
   stars.rotation.y = t * 0.006;
   stars.rotation.x = t * 0.004;
 
-  /* Particles drift */
-  const pp = particles.geometry.attributes.position.array;
-  const bases = particles.userData.bases;
-  for (let i = 0; i < bases.length; i++) {
-    const b = bases[i];
-    pp[i*3]   = b.x + Math.sin(t * 0.3 + i * 0.04) * 1.5;
-    pp[i*3+1] = b.y + Math.cos(t * 0.4 + i * 0.05) * 1.5;
-    pp[i*3+2] = b.z + Math.sin(t * 0.2 + i * 0.03) * 1.5;
-  }
-  particles.geometry.attributes.position.needsUpdate = true;
+  /* Particles drift — cheap: animate the whole field, not each point */
+  particles.rotation.y = t * 0.02;
+  particles.rotation.x = Math.sin(t * 0.1) * 0.05;
+  particles.position.y = Math.sin(t * 0.2) * 3;
 
   /* Lights orbit slowly for shifting color */
   lights.cyan.position.x = Math.sin(t * 0.3) * 70;
@@ -1796,16 +1917,24 @@ function animate() {
 
   renderer.render(scene, camera);
 
-  /* Telemetry */
+  /* Telemetry + adaptive quality */
   fpsCount++;
   const now = performance.now();
   if (now - fpsLast > 600) {
     const fps = Math.round((fpsCount * 1000) / (now - fpsLast));
-    document.getElementById('telFps').textContent = fps;
+    const fpsEl = document.getElementById('telFps');
+    if (fpsEl) fpsEl.textContent = fps;
     const xEl = document.getElementById('telCamX');
     const zEl = document.getElementById('telCamZ');
     if (xEl) xEl.textContent = (camera.position.x >= 0 ? '+' : '') + camera.position.x.toFixed(0);
     if (zEl) zEl.textContent = (camera.position.z >= 0 ? '+' : '') + camera.position.z.toFixed(0);
+
+    /* If frame rate is consistently low, drop render resolution once to recover */
+    if (fps > 0 && fps < 38 && !window._qualityDropped) {
+      window._qualityDropped = true;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    }
+
     fpsCount = 0;
     fpsLast = now;
   }
